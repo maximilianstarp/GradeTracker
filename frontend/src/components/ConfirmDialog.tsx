@@ -64,7 +64,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                 onClick={() => settle(false)}
                 className="rounded-lg px-3 py-1.5 text-sm text-text-secondary hover:bg-text-muted/10"
               >
-                {pending.cancelLabel ?? "Abbrechen"}
+                {pending.cancelLabel ?? "Cancel"}
               </button>
               <button
                 onClick={() => settle(true)}
@@ -73,7 +73,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                   pending.danger ? "bg-status-critical" : "bg-series-1"
                 }`}
               >
-                {pending.confirmLabel ?? "Bestätigen"}
+                {pending.confirmLabel ?? "Confirm"}
               </button>
             </div>
           </div>

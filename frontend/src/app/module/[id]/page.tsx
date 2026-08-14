@@ -42,7 +42,7 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
         setCredits(String(m.credits));
         setStudiengangIds(m.studiengang_ids);
       })
-      .catch((e) => setError(e instanceof ApiError ? e.message : "Fehler beim Laden"));
+      .catch((e) => setError(e instanceof ApiError ? e.message : "Failed to load"));
   }, [modulId]);
 
   async function handleSaveHeader() {
@@ -56,15 +56,15 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
       setModul(updated);
       setEditingHeader(false);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Fehler beim Speichern");
+      setError(e instanceof ApiError ? e.message : "Failed to save");
     }
   }
 
   async function handleDelete() {
     const ok = await confirm({
-      title: "Modul löschen",
-      message: `„${modul?.name}“ wird inklusive aller Noten und Abgaben unwiderruflich gelöscht.`,
-      confirmLabel: "Löschen",
+      title: "Delete module",
+      message: `"${modul?.name}" will be permanently deleted along with all grades and submissions.`,
+      confirmLabel: "Delete",
       danger: true,
     });
     if (!ok) return;
@@ -72,7 +72,7 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
       await deleteModul(modulId);
       router.push("/module");
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Fehler beim Löschen");
+      setError(e instanceof ApiError ? e.message : "Failed to delete");
     }
   }
 
@@ -85,13 +85,13 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
   }
 
   if (!modul) {
-    return <p className="text-text-secondary">Lade Modul…</p>;
+    return <p className="text-text-secondary">Loading module…</p>;
   }
 
   return (
     <div className="space-y-6">
       <Link href="/module" className="text-sm text-text-secondary hover:underline">
-        ← Zurück zu Modulen
+        ← Back to modules
       </Link>
 
       {error && (
@@ -126,13 +126,13 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
                 onClick={handleSaveHeader}
                 className="rounded-lg bg-series-1 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
               >
-                Speichern
+                Save
               </button>
               <button
                 onClick={() => setEditingHeader(false)}
                 className="rounded-lg px-4 py-2 text-sm text-text-secondary hover:bg-text-muted/10"
               >
-                Abbrechen
+                Cancel
               </button>
             </div>
           </div>
@@ -143,7 +143,7 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
               <p className="mt-1 text-text-secondary">
                 {modul.studiengaenge.length > 0
                   ? modul.studiengaenge.map((s) => s.name).join(", ")
-                  : "Sonstiges"}{" "}
+                  : "Other"}{" "}
                 · {formatCredits(modul.credits)}
               </p>
             </div>
@@ -153,13 +153,13 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
                 onClick={() => setEditingHeader(true)}
                 className="rounded-lg px-3 py-1.5 text-sm text-text-secondary hover:bg-text-muted/10"
               >
-                Bearbeiten
+                Edit
               </button>
               <button
                 onClick={handleDelete}
                 className="rounded-lg px-3 py-1.5 text-sm text-status-critical hover:bg-status-critical/10"
               >
-                Löschen
+                Delete
               </button>
             </div>
           </div>
@@ -173,24 +173,24 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
                 : "bg-status-critical/10 text-status-critical"
             }`}
           >
-            {modul.zulassung ? "✓ Klausurzulassung erreicht" : "⚠ Klausurzulassung noch nicht erreicht"}
+            {modul.zulassung ? "✓ Exam admission reached" : "⚠ Exam admission not yet reached"}
           </div>
         )}
       </Card>
 
       <Card>
-        <h2 className="mb-3 font-semibold text-text-primary">Noten</h2>
+        <h2 className="mb-3 font-semibold text-text-primary">Grades</h2>
         <p className="mb-3 text-sm text-text-muted">
-          Bis zu drei Versuche – die beste Note zählt. Note oder „bestanden“ / „nicht bestanden“ möglich.
+          Up to three attempts – the best grade counts. Either a grade or &quot;passed&quot; / &quot;failed&quot;.
         </p>
         <GradeSlots modulId={modul.id} attempts={modul.grade_attempts} onModulUpdate={setModul} />
       </Card>
 
       <Card>
-        <h2 className="mb-3 font-semibold text-text-primary">Übungsserien &amp; Abgaben</h2>
+        <h2 className="mb-3 font-semibold text-text-primary">Assignment Series &amp; Submissions</h2>
         <p className="mb-3 text-sm text-text-muted">
-          Wöchentliche Abgaben je Serie (z. B. Rechenblatt, Programmierblatt). Standardschwelle für die
-          Klausurzulassung: 50 %.
+          Weekly submissions per series (e.g. problem set, programming exercise). Default exam
+          admission threshold: 50%.
         </p>
         <SeriesEditor modulId={modul.id} series={modul.series} onModulUpdate={setModul} />
       </Card>

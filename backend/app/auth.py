@@ -38,18 +38,18 @@ def login_required(view):
     def wrapper(*args, **kwargs):
         token = _extract_token()
         if not token:
-            return error("Nicht angemeldet", 401)
+            return error("Not logged in", 401)
 
         try:
             data = _serializer().loads(token, max_age=TOKEN_MAX_AGE_SECONDS)
         except SignatureExpired:
-            return error("Sitzung abgelaufen, bitte erneut anmelden", 401)
+            return error("Session expired, please log in again", 401)
         except BadSignature:
-            return error("Ungültiger Token", 401)
+            return error("Invalid token", 401)
 
         user = db.session.get(User, data.get("user_id"))
         if not user:
-            return error("Nutzer nicht gefunden", 401)
+            return error("User not found", 401)
 
         g.current_user = user
         return view(*args, **kwargs)

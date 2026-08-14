@@ -6,9 +6,9 @@ import { useAuth } from "@/lib/AuthContext";
 
 const LINKS = [
   { href: "/", label: "Dashboard" },
-  { href: "/studiengaenge", label: "Studiengänge" },
-  { href: "/module", label: "Module" },
-  { href: "/kombimodule", label: "Kombi-Module" },
+  { href: "/studiengaenge", label: "Programs" },
+  { href: "/module", label: "Modules" },
+  { href: "/kombimodule", label: "Combined Modules" },
 ];
 
 export function Nav() {
@@ -52,7 +52,7 @@ export function Nav() {
             onClick={logout}
             className="rounded-lg px-3 py-1.5 font-medium text-text-secondary hover:bg-text-muted/10 hover:text-text-primary"
           >
-            Abmelden
+            Log out
           </button>
         </div>
       </div>

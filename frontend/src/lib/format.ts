@@ -1,7 +1,7 @@
 import type { FinalGrade } from "./types";
 
 export function formatGradeValue(value: number): string {
-  return value.toFixed(1).replace(".", ",");
+  return value.toFixed(1);
 }
 
 export function formatFinalGrade(grade: FinalGrade): string {
@@ -9,11 +9,11 @@ export function formatFinalGrade(grade: FinalGrade): string {
     case "numeric":
       return grade.value !== null ? formatGradeValue(grade.value) : "–";
     case "passed":
-      return "bestanden";
+      return "passed";
     case "failed":
-      return "nicht bestanden";
+      return "failed";
     default:
-      return "offen";
+      return "open";
   }
 }
 
@@ -33,7 +33,8 @@ export function gradeStatusColor(grade: FinalGrade): "good" | "warning" | "criti
 
 export function formatCredits(value: number): string {
   const rounded = Math.round(value * 10) / 10;
-  return `${rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1)} CP`;
+  const formatted = rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1);
+  return `${formatted} credit${rounded === 1 ? "" : "s"}`;
 }
 
 export function formatPercent(value: number | null): string {

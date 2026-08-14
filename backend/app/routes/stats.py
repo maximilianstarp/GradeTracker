@@ -47,7 +47,7 @@ def overview():
     sonstige_module = Modul.query.filter(
         Modul.user_id == user_id, ~Modul.studiengaenge.any()
     ).all()
-    sonstiges = {"id": None, "name": "Sonstiges", **_bucket_stats(sonstige_module, [])}
+    sonstiges = {"id": None, "name": "Other", **_bucket_stats(sonstige_module, [])}
 
     # Every Modul and KombiModul row is counted exactly once here, regardless of
     # whether a Modul also feeds into a KombiModul or several Studiengänge

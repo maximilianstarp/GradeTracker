@@ -24,7 +24,7 @@ export default function SignupPage() {
       await register(name, email, password);
       router.replace("/");
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Registrierung fehlgeschlagen");
+      setError(e instanceof ApiError ? e.message : "Sign-up failed");
     } finally {
       setSubmitting(false);
     }
@@ -36,7 +36,7 @@ export default function SignupPage() {
         🎓 Grade Tracker
       </h1>
       <Card>
-        <h2 className="mb-4 text-lg font-semibold text-text-primary">Registrieren</h2>
+        <h2 className="mb-4 text-lg font-semibold text-text-primary">Sign Up</h2>
         {error && <p className="mb-3 text-sm text-status-critical">{error}</p>}
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
@@ -50,7 +50,7 @@ export default function SignupPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             type="email"
-            placeholder="E-Mail"
+            placeholder="Email"
             required
             className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
           />
@@ -58,7 +58,7 @@ export default function SignupPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             type="password"
-            placeholder="Passwort (mind. 8 Zeichen)"
+            placeholder="Password (min. 8 characters)"
             minLength={8}
             required
             className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
@@ -68,13 +68,13 @@ export default function SignupPage() {
             disabled={submitting}
             className="w-full rounded-lg bg-series-1 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
           >
-            Konto erstellen
+            Create Account
           </button>
         </form>
         <p className="mt-4 text-center text-sm text-text-secondary">
-          Schon ein Konto?{" "}
+          Already have an account?{" "}
           <Link href="/login" className="font-medium text-series-1 hover:underline">
-            Anmelden
+            Log In
           </Link>
         </p>
       </Card>

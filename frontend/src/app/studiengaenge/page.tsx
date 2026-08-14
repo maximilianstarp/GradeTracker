@@ -24,7 +24,7 @@ export default function StudiengaengePage() {
   const load = () =>
     listStudiengaenge()
       .then(setStudiengaenge)
-      .catch((e) => setError(e instanceof ApiError ? e.message : "Fehler beim Laden"))
+      .catch((e) => setError(e instanceof ApiError ? e.message : "Failed to load"))
       .finally(() => setLoading(false));
 
   useEffect(() => {
@@ -39,7 +39,7 @@ export default function StudiengaengePage() {
       setName("");
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Fehler beim Anlegen");
+      setError(e instanceof ApiError ? e.message : "Failed to create");
     }
   }
 
@@ -49,15 +49,15 @@ export default function StudiengaengePage() {
       setEditingId(null);
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Fehler beim Umbenennen");
+      setError(e instanceof ApiError ? e.message : "Failed to rename");
     }
   }
 
   async function handleDelete(id: number) {
     const ok = await confirm({
-      title: "Studiengang löschen",
-      message: "Zugeordnete Module wandern nach „Sonstiges“. Diese Aktion kann nicht rückgängig gemacht werden.",
-      confirmLabel: "Löschen",
+      title: "Delete program",
+      message: "Assigned modules move to \"Other\". This action cannot be undone.",
+      confirmLabel: "Delete",
       danger: true,
     });
     if (!ok) return;
@@ -65,14 +65,14 @@ export default function StudiengaengePage() {
       await deleteStudiengang(id);
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Fehler beim Löschen");
+      setError(e instanceof ApiError ? e.message : "Failed to delete");
     }
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-text-primary">Studiengänge</h1>
+        <h1 className="text-2xl font-semibold text-text-primary">Programs</h1>
       </div>
 
       {error && (
@@ -86,7 +86,7 @@ export default function StudiengaengePage() {
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Neuer Studiengang, z. B. Mathematik"
+            placeholder="New program, e.g. Mathematics"
             required
             className="flex-1 rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
           />
@@ -94,15 +94,15 @@ export default function StudiengaengePage() {
             type="submit"
             className="rounded-lg bg-series-1 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
           >
-            Anlegen
+            Add
           </button>
         </form>
       </Card>
 
       {loading ? (
-        <p className="text-text-secondary">Lade…</p>
+        <p className="text-text-secondary">Loading…</p>
       ) : studiengaenge.length === 0 ? (
-        <p className="text-text-muted">Noch keine Studiengänge angelegt.</p>
+        <p className="text-text-muted">No programs yet.</p>
       ) : (
         <div className="space-y-2">
           {studiengaenge.map((sg) => (
@@ -119,13 +119,13 @@ export default function StudiengaengePage() {
                     onClick={() => handleRename(sg.id)}
                     className="rounded-lg bg-series-1 px-3 py-1.5 text-sm font-medium text-white"
                   >
-                    Speichern
+                    Save
                   </button>
                   <button
                     onClick={() => setEditingId(null)}
                     className="rounded-lg px-3 py-1.5 text-sm text-text-secondary hover:bg-text-muted/10"
                   >
-                    Abbrechen
+                    Cancel
                   </button>
                 </div>
               ) : (
@@ -139,13 +139,13 @@ export default function StudiengaengePage() {
                       }}
                       className="rounded-lg px-3 py-1.5 text-sm text-text-secondary hover:bg-text-muted/10"
                     >
-                      Umbenennen
+                      Rename
                     </button>
                     <button
                       onClick={() => handleDelete(sg.id)}
                       className="rounded-lg px-3 py-1.5 text-sm text-status-critical hover:bg-status-critical/10"
                     >
-                      Löschen
+                      Delete
                     </button>
                   </div>
                 </>

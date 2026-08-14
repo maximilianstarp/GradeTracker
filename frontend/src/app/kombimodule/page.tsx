@@ -36,7 +36,7 @@ export default function KombimodulePage() {
         setModule(mods);
         if (!studiengangId && sgs.length > 0) setStudiengangId(String(sgs[0].id));
       })
-      .catch((e) => setError(e instanceof ApiError ? e.message : "Fehler beim Laden"))
+      .catch((e) => setError(e instanceof ApiError ? e.message : "Failed to load"))
       .finally(() => setLoading(false));
 
   useEffect(() => {
@@ -52,7 +52,7 @@ export default function KombimodulePage() {
     e.preventDefault();
     setError(null);
     if (sourceIds.length < 2) {
-      setError("Bitte mindestens zwei Quellmodule auswählen");
+      setError("Please select at least two source modules");
       return;
     }
     try {
@@ -67,15 +67,15 @@ export default function KombimodulePage() {
       setSourceIds([]);
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Fehler beim Anlegen");
+      setError(e instanceof ApiError ? e.message : "Failed to create");
     }
   }
 
   async function handleDelete(id: number) {
     const ok = await confirm({
-      title: "Kombi-Modul löschen",
-      message: "Die Quellmodule bleiben erhalten, nur die Zusammenfassung wird gelöscht.",
-      confirmLabel: "Löschen",
+      title: "Delete combined module",
+      message: "The source modules stay intact, only this combination is deleted.",
+      confirmLabel: "Delete",
       danger: true,
     });
     if (!ok) return;
@@ -83,14 +83,14 @@ export default function KombimodulePage() {
       await deleteKombimodul(id);
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Fehler beim Löschen");
+      setError(e instanceof ApiError ? e.message : "Failed to delete");
     }
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-text-primary">Kombi-Module</h1>
+        <h1 className="text-2xl font-semibold text-text-primary">Combined Modules</h1>
       </div>
 
       {error && (
@@ -101,17 +101,17 @@ export default function KombimodulePage() {
 
       {studiengaenge.length === 0 ? (
         <p className="text-text-muted">
-          Lege zuerst einen Studiengang an – Kombi-Module benötigen einen Studiengang.
+          Create a program first – combined modules need a program.
         </p>
       ) : (
         <Card>
-          <h2 className="mb-3 font-semibold text-text-primary">Neues Kombi-Modul</h2>
+          <h2 className="mb-3 font-semibold text-text-primary">New Combined Module</h2>
           <form onSubmit={handleCreate} className="space-y-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Name, z. B. Mathe für Physiker"
+                placeholder="Name, e.g. Math for Physicists"
                 required
                 className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
               />
@@ -140,7 +140,7 @@ export default function KombimodulePage() {
 
             <div>
               <p className="mb-2 text-sm text-text-secondary">
-                Quellmodule (mind. 2) – die Note wird gemittelt:
+                Source modules (at least 2) – the grade is averaged:
               </p>
               <div className="flex flex-wrap gap-2">
                 {module.map((m) => (
@@ -168,16 +168,16 @@ export default function KombimodulePage() {
               type="submit"
               className="rounded-lg bg-series-1 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
             >
-              Anlegen
+              Add
             </button>
           </form>
         </Card>
       )}
 
       {loading ? (
-        <p className="text-text-secondary">Lade…</p>
+        <p className="text-text-secondary">Loading…</p>
       ) : kombimodule.length === 0 ? (
-        <p className="text-text-muted">Noch keine Kombi-Module angelegt.</p>
+        <p className="text-text-muted">No combined modules yet.</p>
       ) : (
         <div className="space-y-2">
           {kombimodule.map((k) => (
@@ -186,7 +186,7 @@ export default function KombimodulePage() {
                 <div className="font-medium text-text-primary">{k.name}</div>
                 <div className="mt-0.5 text-sm text-text-muted">
                   {studiengaenge.find((s) => s.id === k.studiengang_id)?.name} ·{" "}
-                  {formatCredits(k.credits)} · aus {k.source_module.map((m) => m.name).join(" + ")}
+                  {formatCredits(k.credits)} · from {k.source_module.map((m) => m.name).join(" + ")}
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -195,7 +195,7 @@ export default function KombimodulePage() {
                   onClick={() => handleDelete(k.id)}
                   className="rounded-lg px-3 py-1.5 text-sm text-status-critical hover:bg-status-critical/10"
                 >
-                  Löschen
+                  Delete
                 </button>
               </div>
             </Card>

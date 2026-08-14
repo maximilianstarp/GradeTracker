@@ -14,10 +14,10 @@ export function CreditsChart({ rows }: { rows: CreditsChartRow[] }) {
     <div>
       <div className="mb-4 flex items-center gap-4 text-sm text-text-secondary">
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-series-1" /> Benotet
+          <span className="h-2.5 w-2.5 rounded-full bg-series-1" /> Graded
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-series-3" /> Bestanden (unbenotet)
+          <span className="h-2.5 w-2.5 rounded-full bg-series-3" /> Passed (ungraded)
         </span>
       </div>
       <div className="space-y-3">

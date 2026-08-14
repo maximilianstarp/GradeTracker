@@ -24,7 +24,7 @@ export default function AccountPage() {
     setSuccess(false);
 
     if (newPassword && newPassword !== newPasswordConfirm) {
-      setError("Die neuen Passwörter stimmen nicht überein");
+      setError("The new passwords don't match");
       return;
     }
 
@@ -42,7 +42,7 @@ export default function AccountPage() {
       setNewPasswordConfirm("");
       setSuccess(true);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Speichern fehlgeschlagen");
+      setError(e instanceof ApiError ? e.message : "Failed to save");
     } finally {
       setSubmitting(false);
     }
@@ -52,11 +52,11 @@ export default function AccountPage() {
 
   return (
     <div className="mx-auto max-w-md space-y-6">
-      <h1 className="text-2xl font-semibold text-text-primary">Konto</h1>
+      <h1 className="text-2xl font-semibold text-text-primary">Account</h1>
 
       <Card>
         {error && <p className="mb-3 text-sm text-status-critical">{error}</p>}
-        {success && <p className="mb-3 text-sm text-status-good">Änderungen gespeichert.</p>}
+        {success && <p className="mb-3 text-sm text-status-good">Changes saved.</p>}
         <form onSubmit={handleSubmit} className="space-y-4">
           <Field label="Name">
             <input
@@ -66,7 +66,7 @@ export default function AccountPage() {
               className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
             />
           </Field>
-          <Field label="E-Mail">
+          <Field label="Email">
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -78,10 +78,10 @@ export default function AccountPage() {
 
           <div className="border-t border-border pt-4">
             <p className="mb-3 text-sm text-text-secondary">
-              Passwort ändern (optional – leer lassen, um es beizubehalten):
+              Change password (optional – leave blank to keep it):
             </p>
             <div className="space-y-3">
-              <Field label="Neues Passwort">
+              <Field label="New password">
                 <input
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
@@ -90,7 +90,7 @@ export default function AccountPage() {
                   className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
                 />
               </Field>
-              <Field label="Neues Passwort bestätigen">
+              <Field label="Confirm new password">
                 <input
                   value={newPasswordConfirm}
                   onChange={(e) => setNewPasswordConfirm(e.target.value)}
@@ -103,7 +103,7 @@ export default function AccountPage() {
           </div>
 
           <div className="border-t border-border pt-4">
-            <Field label="Aktuelles Passwort (zur Bestätigung erforderlich)">
+            <Field label="Current password (required to confirm)">
               <input
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
@@ -119,7 +119,7 @@ export default function AccountPage() {
             disabled={submitting}
             className="rounded-lg bg-series-1 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
           >
-            Speichern
+            Save
           </button>
         </form>
       </Card>

@@ -185,7 +185,7 @@ class TestKombiModul:
         resp = client.post(
             "/api/kombimodule",
             json={
-                "name": "Mathe für Physiker",
+                "name": "Math for Physicists",
                 "credits": 14,
                 "studiengang_id": physik["id"],
                 "source_module_ids": [analysis["id"], linalg["id"]],

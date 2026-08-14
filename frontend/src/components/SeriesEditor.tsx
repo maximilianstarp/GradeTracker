@@ -43,7 +43,7 @@ export function SeriesEditor({
       setTotalWeeks("");
       setShowNewSeries(false);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Fehler beim Anlegen der Übungsserie");
+      setError(e instanceof ApiError ? e.message : "Failed to create the assignment series");
     }
   }
 
@@ -63,7 +63,7 @@ export function SeriesEditor({
           <input
             value={seriesName}
             onChange={(e) => setSeriesName(e.target.value)}
-            placeholder="Name, z. B. Rechenblatt"
+            placeholder="Name, e.g. Problem Set"
             required
             className="rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-sm outline-none focus:border-series-1"
           />
@@ -73,7 +73,7 @@ export function SeriesEditor({
             type="number"
             min="0"
             max="100"
-            placeholder="Schwelle %"
+            placeholder="Threshold %"
             className="rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-sm outline-none focus:border-series-1"
           />
           <input
@@ -81,21 +81,21 @@ export function SeriesEditor({
             onChange={(e) => setTotalWeeks(e.target.value)}
             type="number"
             min="1"
-            placeholder="Wochen (optional)"
+            placeholder="Weeks (optional)"
             className="rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-sm outline-none focus:border-series-1"
           />
           <button
             type="submit"
             className="rounded-lg bg-series-1 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
           >
-            Anlegen
+            Create
           </button>
           <button
             type="button"
             onClick={() => setShowNewSeries(false)}
             className="rounded-lg px-3 py-1.5 text-sm text-text-secondary hover:bg-text-muted/10"
           >
-            Abbrechen
+            Cancel
           </button>
         </form>
       ) : (
@@ -103,7 +103,7 @@ export function SeriesEditor({
           onClick={() => setShowNewSeries(true)}
           className="text-sm font-medium text-series-1 hover:underline"
         >
-          + Übungsserie hinzufügen
+          + Add assignment series
         </button>
       )}
     </div>
@@ -138,7 +138,7 @@ function SeriesCard({
       setAchieved("");
       setMax(max); // keep max points prefilled for the next week
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : "Fehler beim Speichern der Abgabe");
+      onError(e instanceof ApiError ? e.message : "Failed to save the submission");
     }
   }
 
@@ -148,15 +148,15 @@ function SeriesCard({
       const modul = await deleteSubmission(id);
       onModulUpdate(modul);
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : "Fehler beim Löschen");
+      onError(e instanceof ApiError ? e.message : "Failed to delete");
     }
   }
 
   async function handleDeleteSeries() {
     const ok = await confirm({
-      title: "Übungsserie löschen",
-      message: `„${series.name}“ wird inklusive aller erfassten Abgaben gelöscht.`,
-      confirmLabel: "Löschen",
+      title: "Delete assignment series",
+      message: `"${series.name}" will be deleted along with all logged submissions.`,
+      confirmLabel: "Delete",
       danger: true,
     });
     if (!ok) return;
@@ -165,7 +165,7 @@ function SeriesCard({
       const modul = await deleteSeries(series.id);
       onModulUpdate(modul);
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : "Fehler beim Löschen");
+      onError(e instanceof ApiError ? e.message : "Failed to delete");
     }
   }
 
@@ -177,7 +177,7 @@ function SeriesCard({
           onClick={handleDeleteSeries}
           className="text-xs text-text-muted hover:text-status-critical"
         >
-          Serie löschen
+          Delete series
         </button>
       </div>
       <div className="mt-2">
@@ -187,10 +187,10 @@ function SeriesCard({
           passed={series.progress.passed}
         />
         <p className="mt-1.5 text-xs text-text-muted">
-          {series.progress.points_achieved} / {series.progress.points_max} Punkte ·{" "}
+          {series.progress.points_achieved} / {series.progress.points_max} points ·{" "}
           {formatPercent(series.progress.percent)}
           {!series.progress.passed && series.progress.points_max > 0 && (
-            <> · noch {series.progress.points_needed} Punkte bis {series.threshold_percent}%</>
+            <> · {series.progress.points_needed} more points needed for {series.threshold_percent}%</>
           )}
         </p>
       </div>
@@ -199,9 +199,9 @@ function SeriesCard({
         <table className="mt-3 w-full text-sm">
           <thead>
             <tr className="text-left text-text-muted">
-              <th className="pb-1 font-normal">Woche</th>
-              <th className="pb-1 font-normal">Erreicht</th>
-              <th className="pb-1 font-normal">Maximal</th>
+              <th className="pb-1 font-normal">Week</th>
+              <th className="pb-1 font-normal">Achieved</th>
+              <th className="pb-1 font-normal">Max</th>
               <th />
             </tr>
           </thead>
@@ -216,7 +216,7 @@ function SeriesCard({
                     onClick={() => handleDeleteSubmission(sub.id)}
                     className="text-xs text-text-muted hover:text-status-critical"
                   >
-                    Entfernen
+                    Remove
                   </button>
                 </td>
               </tr>
@@ -226,7 +226,7 @@ function SeriesCard({
       )}
 
       <form onSubmit={handleAddSubmission} className="mt-3 flex items-end gap-2">
-        <Field label="Woche">
+        <Field label="Week">
           <input
             value={week}
             onChange={(e) => setWeek(e.target.value)}
@@ -236,7 +236,7 @@ function SeriesCard({
             className="w-16 rounded-lg border border-border bg-surface-raised px-2 py-1.5 text-sm outline-none focus:border-series-1"
           />
         </Field>
-        <Field label="Erreicht">
+        <Field label="Achieved">
           <input
             value={achieved}
             onChange={(e) => setAchieved(e.target.value)}
@@ -247,7 +247,7 @@ function SeriesCard({
             className="w-20 rounded-lg border border-border bg-surface-raised px-2 py-1.5 text-sm outline-none focus:border-series-1"
           />
         </Field>
-        <Field label="Maximal">
+        <Field label="Max">
           <input
             value={max}
             onChange={(e) => setMax(e.target.value)}
@@ -262,7 +262,7 @@ function SeriesCard({
           type="submit"
           className="rounded-lg bg-series-1 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
         >
-          Hinzufügen
+          Add
         </button>
       </form>
     </div>

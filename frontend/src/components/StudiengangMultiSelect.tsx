@@ -34,10 +34,10 @@ export function StudiengangMultiSelect({
         </label>
       ))}
       {studiengaenge.length === 0 && (
-        <span className="text-sm text-text-muted">Keine Studiengänge angelegt.</span>
+        <span className="text-sm text-text-muted">No programs yet.</span>
       )}
       {selectedIds.length === 0 && studiengaenge.length > 0 && (
-        <span className="self-center text-sm text-text-muted">→ Sonstiges</span>
+        <span className="self-center text-sm text-text-muted">→ Other</span>
       )}
     </div>
   );

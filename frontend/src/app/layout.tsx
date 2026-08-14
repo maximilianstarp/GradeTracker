@@ -17,13 +17,13 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Grade Tracker",
-  description: "Studiengänge, Module, Noten und Klausurzulassungen im Blick behalten.",
+  description: "Keep track of degree programs, modules, grades and exam admissions.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="de"
+      lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-page">

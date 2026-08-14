@@ -20,14 +20,14 @@ def create_studiengang():
     data = request.get_json(silent=True) or {}
     name = (data.get("name") or "").strip()
     if not name:
-        return error("name ist erforderlich")
+        return error("name is required")
     if name.lower() == "sonstiges":
-        return error("'Sonstiges' ist reserviert und kein eigener Studiengang")
+        return error("'Other' is reserved and not a real program")
     exists = Studiengang.query.filter(
         Studiengang.user_id == g.current_user.id, db.func.lower(Studiengang.name) == name.lower()
     ).first()
     if exists:
-        return error("Studiengang existiert bereits", 409)
+        return error("Program already exists", 409)
 
     sg = Studiengang(name=name, user_id=g.current_user.id)
     db.session.add(sg)
@@ -40,7 +40,7 @@ def create_studiengang():
 def get_studiengang(studiengang_id: int):
     sg = get_owned(Studiengang, studiengang_id, g.current_user.id)
     if not sg:
-        return error("Studiengang nicht gefunden", 404)
+        return error("Program not found", 404)
     return jsonify(sg.to_dict())
 
 
@@ -49,12 +49,12 @@ def get_studiengang(studiengang_id: int):
 def update_studiengang(studiengang_id: int):
     sg = get_owned(Studiengang, studiengang_id, g.current_user.id)
     if not sg:
-        return error("Studiengang nicht gefunden", 404)
+        return error("Program not found", 404)
     data = request.get_json(silent=True) or {}
     if "name" in data:
         name = (data.get("name") or "").strip()
         if not name:
-            return error("name darf nicht leer sein")
+            return error("name must not be empty")
         sg.name = name
     db.session.commit()
     return jsonify(sg.to_dict())
@@ -65,7 +65,7 @@ def update_studiengang(studiengang_id: int):
 def delete_studiengang(studiengang_id: int):
     sg = get_owned(Studiengang, studiengang_id, g.current_user.id)
     if not sg:
-        return error("Studiengang nicht gefunden", 404)
+        return error("Program not found", 404)
     db.session.delete(sg)
     db.session.commit()
     return "", 204

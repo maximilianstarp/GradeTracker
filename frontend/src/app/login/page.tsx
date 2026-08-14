@@ -23,7 +23,7 @@ export default function LoginPage() {
       await login(email, password);
       router.replace("/");
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Anmeldung fehlgeschlagen");
+      setError(e instanceof ApiError ? e.message : "Login failed");
     } finally {
       setSubmitting(false);
     }
@@ -35,14 +35,14 @@ export default function LoginPage() {
         🎓 Grade Tracker
       </h1>
       <Card>
-        <h2 className="mb-4 text-lg font-semibold text-text-primary">Anmelden</h2>
+        <h2 className="mb-4 text-lg font-semibold text-text-primary">Log In</h2>
         {error && <p className="mb-3 text-sm text-status-critical">{error}</p>}
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             type="email"
-            placeholder="E-Mail"
+            placeholder="Email"
             required
             className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
           />
@@ -50,7 +50,7 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             type="password"
-            placeholder="Passwort"
+            placeholder="Password"
             required
             className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
           />
@@ -59,13 +59,13 @@ export default function LoginPage() {
             disabled={submitting}
             className="w-full rounded-lg bg-series-1 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
           >
-            Anmelden
+            Log In
           </button>
         </form>
         <p className="mt-4 text-center text-sm text-text-secondary">
-          Noch kein Konto?{" "}
+          Don&apos;t have an account?{" "}
           <Link href="/signup" className="font-medium text-series-1 hover:underline">
-            Registrieren
+            Sign Up
           </Link>
         </p>
       </Card>

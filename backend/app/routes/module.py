@@ -12,17 +12,17 @@ def _resolve_studiengaenge(raw_ids) -> tuple[list[Studiengang] | None, tuple | N
     if raw_ids is None:
         return [], None
     if not isinstance(raw_ids, list):
-        return None, error("studiengang_ids muss eine Liste sein")
+        return None, error("studiengang_ids must be a list")
     try:
         ids = [int(i) for i in raw_ids]
     except (TypeError, ValueError):
-        return None, error("studiengang_ids müssen Zahlen sein")
+        return None, error("studiengang_ids must be numbers")
 
     rows = Studiengang.query.filter(
         Studiengang.id.in_(ids), Studiengang.user_id == g.current_user.id
     ).all()
     if len(rows) != len(set(ids)):
-        return None, error("mindestens ein Studiengang wurde nicht gefunden", 404)
+        return None, error("at least one program was not found", 404)
     return rows, None
 
 
@@ -38,7 +38,7 @@ def list_module():
             try:
                 sid = int(raw)
             except ValueError:
-                return error("studiengang_id muss eine Zahl sein")
+                return error("studiengang_id must be a number")
             q = q.filter(Modul.studiengaenge.any(Studiengang.id == sid))
     rows = q.order_by(Modul.name).all()
     return jsonify([m.to_dict() for m in rows])
@@ -52,13 +52,13 @@ def create_modul():
     credits = data.get("credits")
 
     if not name:
-        return error("name ist erforderlich")
+        return error("name is required")
     try:
         credits = float(credits)
     except (TypeError, ValueError):
-        return error("credits muss eine Zahl sein")
+        return error("credits must be a number")
     if credits <= 0:
-        return error("credits muss positiv sein")
+        return error("credits must be positive")
 
     studiengaenge, err = _resolve_studiengaenge(data.get("studiengang_ids"))
     if err:
@@ -75,7 +75,7 @@ def create_modul():
 def get_modul(modul_id: int):
     modul = get_owned(Modul, modul_id, g.current_user.id)
     if not modul:
-        return error("Modul nicht gefunden", 404)
+        return error("Module not found", 404)
     return jsonify(modul.to_dict())
 
 
@@ -84,22 +84,22 @@ def get_modul(modul_id: int):
 def update_modul(modul_id: int):
     modul = get_owned(Modul, modul_id, g.current_user.id)
     if not modul:
-        return error("Modul nicht gefunden", 404)
+        return error("Module not found", 404)
     data = request.get_json(silent=True) or {}
 
     if "name" in data:
         name = (data.get("name") or "").strip()
         if not name:
-            return error("name darf nicht leer sein")
+            return error("name must not be empty")
         modul.name = name
 
     if "credits" in data:
         try:
             credits = float(data["credits"])
         except (TypeError, ValueError):
-            return error("credits muss eine Zahl sein")
+            return error("credits must be a number")
         if credits <= 0:
-            return error("credits muss positiv sein")
+            return error("credits must be positive")
         modul.credits = credits
 
     if "studiengang_ids" in data:
@@ -117,7 +117,7 @@ def update_modul(modul_id: int):
 def delete_modul(modul_id: int):
     modul = get_owned(Modul, modul_id, g.current_user.id)
     if not modul:
-        return error("Modul nicht gefunden", 404)
+        return error("Module not found", 404)
     db.session.delete(modul)
     db.session.commit()
     return "", 204
@@ -131,7 +131,7 @@ VALID_KINDS = {"numeric", "pass", "fail"}
 def upsert_grade(modul_id: int):
     modul = get_owned(Modul, modul_id, g.current_user.id)
     if not modul:
-        return error("Modul nicht gefunden", 404)
+        return error("Module not found", 404)
 
     data = request.get_json(silent=True) or {}
     slot = data.get("slot")
@@ -141,19 +141,19 @@ def upsert_grade(modul_id: int):
     try:
         slot = int(slot)
     except (TypeError, ValueError):
-        return error("slot muss 1, 2 oder 3 sein")
+        return error("slot must be 1, 2 or 3")
     if slot not in (1, 2, 3):
-        return error("slot muss 1, 2 oder 3 sein")
+        return error("slot must be 1, 2 or 3")
     if kind not in VALID_KINDS:
-        return error("kind muss 'numeric', 'pass' oder 'fail' sein")
+        return error("kind must be 'numeric', 'pass' or 'fail'")
 
     if kind == "numeric":
         try:
             value = float(value)
         except (TypeError, ValueError):
-            return error("value ist bei kind='numeric' erforderlich")
+            return error("value is required when kind='numeric'")
         if not (1.0 <= value <= 5.0):
-            return error("value muss zwischen 1.0 und 5.0 liegen")
+            return error("value must be between 1.0 and 5.0")
     else:
         value = None
 
@@ -174,7 +174,7 @@ def upsert_grade(modul_id: int):
 def delete_grade(grade_id: int):
     attempt = db.session.get(GradeAttempt, grade_id)
     if not attempt or attempt.modul.user_id != g.current_user.id:
-        return error("Note nicht gefunden", 404)
+        return error("Grade not found", 404)
     modul_id = attempt.modul_id
     db.session.delete(attempt)
     db.session.commit()
@@ -187,27 +187,27 @@ def delete_grade(grade_id: int):
 def create_series(modul_id: int):
     modul = get_owned(Modul, modul_id, g.current_user.id)
     if not modul:
-        return error("Modul nicht gefunden", 404)
+        return error("Module not found", 404)
 
     data = request.get_json(silent=True) or {}
     name = (data.get("name") or "").strip()
     if not name:
-        return error("name ist erforderlich")
+        return error("name is required")
 
     threshold = data.get("threshold_percent", 50.0)
     try:
         threshold = float(threshold)
     except (TypeError, ValueError):
-        return error("threshold_percent muss eine Zahl sein")
+        return error("threshold_percent must be a number")
     if not (0 <= threshold <= 100):
-        return error("threshold_percent muss zwischen 0 und 100 liegen")
+        return error("threshold_percent must be between 0 and 100")
 
     total_weeks = data.get("total_weeks")
     if total_weeks is not None:
         try:
             total_weeks = int(total_weeks)
         except (TypeError, ValueError):
-            return error("total_weeks muss eine ganze Zahl sein")
+            return error("total_weeks must be a whole number")
 
     series = SubmissionSeries(
         modul_id=modul_id, name=name, threshold_percent=threshold, total_weeks=total_weeks

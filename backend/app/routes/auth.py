@@ -28,13 +28,13 @@ def register():
     password = data.get("password") or ""
 
     if not name:
-        return error("Name ist erforderlich")
+        return error("Name is required")
     if not _is_valid_email(email):
-        return error("Bitte eine gültige E-Mail-Adresse angeben")
+        return error("Please provide a valid email address")
     if len(password) < MIN_PASSWORD_LENGTH:
         return error(f"Passwort muss mindestens {MIN_PASSWORD_LENGTH} Zeichen lang sein")
     if User.query.filter_by(email=email).first():
-        return error("E-Mail-Adresse wird bereits verwendet", 409)
+        return error("Email address is already in use", 409)
 
     user = User(name=name, email=email)
     user.set_password(password)
@@ -52,7 +52,7 @@ def login():
 
     user = User.query.filter_by(email=email).first()
     if not user or not user.check_password(password):
-        return error("E-Mail oder Passwort ist falsch", 401)
+        return error("Email or password is incorrect", 401)
 
     return jsonify({"token": issue_token(user), "user": user.to_dict()})
 
@@ -71,20 +71,20 @@ def update_me():
 
     current_password = data.get("current_password") or ""
     if not user.check_password(current_password):
-        return error("Aktuelles Passwort ist falsch", 401)
+        return error("Current password is incorrect", 401)
 
     if "name" in data:
         name = (data.get("name") or "").strip()
         if not name:
-            return error("Name darf nicht leer sein")
+            return error("Name must not be empty")
         user.name = name
 
     if "email" in data:
         email = _normalize_email(data.get("email"))
         if not _is_valid_email(email):
-            return error("Bitte eine gültige E-Mail-Adresse angeben")
+            return error("Please provide a valid email address")
         if email != user.email and User.query.filter_by(email=email).first():
-            return error("E-Mail-Adresse wird bereits verwendet", 409)
+            return error("Email address is already in use", 409)
         user.email = email
 
     if data.get("new_password"):

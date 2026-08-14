@@ -32,7 +32,7 @@ export function ProgressBar({
         <div
           className="absolute top-1/2 h-3.5 w-px -translate-y-1/2 bg-text-muted"
           style={{ left: `${thresholdPercent}%` }}
-          title={`Schwelle: ${thresholdPercent}%`}
+          title={`Threshold: ${thresholdPercent}%`}
         />
       </div>
     </div>

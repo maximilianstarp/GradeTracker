@@ -63,7 +63,7 @@ function GradeSlotRow({
       });
       onModulUpdate(modul);
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : "Fehler beim Speichern der Note");
+      onError(e instanceof ApiError ? e.message : "Failed to save the grade");
     }
   }
 
@@ -75,21 +75,21 @@ function GradeSlotRow({
       onModulUpdate(modul);
       setValue("");
     } catch (e) {
-      onError(e instanceof ApiError ? e.message : "Fehler beim Löschen");
+      onError(e instanceof ApiError ? e.message : "Failed to delete");
     }
   }
 
   return (
     <div className="flex items-center gap-2">
-      <span className="w-16 shrink-0 text-sm text-text-muted">Versuch {slot}</span>
+      <span className="w-16 shrink-0 text-sm text-text-muted">Attempt {slot}</span>
       <select
         value={kind}
         onChange={(e) => setKind(e.target.value as GradeKind)}
         className="rounded-lg border border-border bg-surface-raised px-2 py-1.5 text-sm outline-none focus:border-series-1"
       >
-        <option value="numeric">Note</option>
-        <option value="pass">Bestanden</option>
-        <option value="fail">Nicht bestanden</option>
+        <option value="numeric">Grade</option>
+        <option value="pass">Passed</option>
+        <option value="fail">Failed</option>
       </select>
       {kind === "numeric" && (
         <input
@@ -99,7 +99,7 @@ function GradeSlotRow({
           min="1"
           max="5"
           step="0.1"
-          placeholder="z. B. 1,7"
+          placeholder="e.g. 1.7"
           className="w-24 rounded-lg border border-border bg-surface-raised px-2 py-1.5 text-sm outline-none focus:border-series-1"
         />
       )}
@@ -107,14 +107,14 @@ function GradeSlotRow({
         onClick={handleSave}
         className="rounded-lg bg-series-1 px-3 py-1.5 text-sm font-medium text-white hover:opacity-90"
       >
-        Speichern
+        Save
       </button>
       {attempt && (
         <button
           onClick={handleClear}
           className="rounded-lg px-2 py-1.5 text-sm text-text-muted hover:bg-text-muted/10"
         >
-          Leeren
+          Clear
         </button>
       )}
     </div>

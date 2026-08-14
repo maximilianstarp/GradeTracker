@@ -29,7 +29,7 @@ export default function ModulePage() {
         setStudiengaenge(sgs);
         setModule(mods);
       })
-      .catch((e) => setError(e instanceof ApiError ? e.message : "Fehler beim Laden"))
+      .catch((e) => setError(e instanceof ApiError ? e.message : "Failed to load"))
       .finally(() => setLoading(false));
 
   useEffect(() => {
@@ -43,7 +43,7 @@ export default function ModulePage() {
   }, [module, filter]);
 
   function studiengangNames(m: Modul) {
-    return m.studiengaenge.length > 0 ? m.studiengaenge.map((s) => s.name).join(", ") : "Sonstiges";
+    return m.studiengaenge.length > 0 ? m.studiengaenge.map((s) => s.name).join(", ") : "Other";
   }
 
   async function handleCreate(e: FormEvent) {
@@ -56,14 +56,14 @@ export default function ModulePage() {
       setStudiengangIds([]);
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Fehler beim Anlegen");
+      setError(e instanceof ApiError ? e.message : "Failed to create");
     }
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-text-primary">Module</h1>
+        <h1 className="text-2xl font-semibold text-text-primary">Modules</h1>
       </div>
 
       {error && (
@@ -73,13 +73,13 @@ export default function ModulePage() {
       )}
 
       <Card>
-        <h2 className="mb-3 font-semibold text-text-primary">Neues Modul</h2>
+        <h2 className="mb-3 font-semibold text-text-primary">New Module</h2>
         <form onSubmit={handleCreate} className="space-y-3">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr_auto]">
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Name, z. B. Analysis I"
+              placeholder="Name, e.g. Calculus I"
               required
               className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
             />
@@ -97,12 +97,12 @@ export default function ModulePage() {
               type="submit"
               className="rounded-lg bg-series-1 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
             >
-              Anlegen
+              Add
             </button>
           </div>
           <div>
             <p className="mb-2 text-sm text-text-secondary">
-              Studiengänge (mehrere möglich, keiner = Sonstiges):
+              Programs (multiple possible, none = Other):
             </p>
             <StudiengangMultiSelect
               studiengaenge={studiengaenge}
@@ -114,7 +114,7 @@ export default function ModulePage() {
       </Card>
 
       <div className="flex flex-wrap gap-2">
-        <FilterChip active={filter === ALLE} onClick={() => setFilter(ALLE)} label="Alle" />
+        <FilterChip active={filter === ALLE} onClick={() => setFilter(ALLE)} label="All" />
         {studiengaenge.map((sg) => (
           <FilterChip
             key={sg.id}
@@ -123,13 +123,13 @@ export default function ModulePage() {
             label={sg.name}
           />
         ))}
-        <FilterChip active={filter === SONSTIGES} onClick={() => setFilter(SONSTIGES)} label="Sonstiges" />
+        <FilterChip active={filter === SONSTIGES} onClick={() => setFilter(SONSTIGES)} label="Other" />
       </div>
 
       {loading ? (
-        <p className="text-text-secondary">Lade…</p>
+        <p className="text-text-secondary">Loading…</p>
       ) : filtered.length === 0 ? (
-        <p className="text-text-muted">Keine Module in dieser Ansicht.</p>
+        <p className="text-text-muted">No modules in this view.</p>
       ) : (
         <div className="space-y-2">
           {filtered.map((m) => (
@@ -143,8 +143,8 @@ export default function ModulePage() {
                 </div>
                 <div className="flex items-center gap-3">
                   {!m.zulassung && (
-                    <span className="text-sm text-status-critical" title="Klausurzulassung offen">
-                      ⚠ Zulassung offen
+                    <span className="text-sm text-status-critical" title="Exam admission open">
+                      ⚠ Admission open
                     </span>
                   )}
                   <GradeBadge grade={m.final_grade} />
