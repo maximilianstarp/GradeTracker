@@ -1,32 +1,42 @@
-"""Populate the database with realistic example data for local exploration
-and screenshots. Safe to run multiple times against a fresh database only -
-it does not de-duplicate against existing rows.
+"""Populate the database with a demo user and realistic example data for
+local exploration and screenshots. Safe to run multiple times against a
+fresh database only - it does not de-duplicate against existing rows.
 
 Usage:
     python seed.py
 """
 from app import create_app
-from app.models import KombiModul, Modul, Studiengang, SubmissionSeries, Submission, GradeAttempt, db
+from app.models import KombiModul, Modul, Studiengang, SubmissionSeries, Submission, GradeAttempt, User, db
+
+DEMO_EMAIL = "demo@example.com"
+DEMO_PASSWORD = "demo12345"
 
 
 def run():
     app = create_app()
     with app.app_context():
-        if Studiengang.query.first():
+        if User.query.first():
             print("Datenbank enthält bereits Daten - Seed übersprungen.")
             return
 
-        mathe = Studiengang(name="Mathematik")
-        physik = Studiengang(name="Physik")
-        vwl = Studiengang(name="VWL")
+        user = User(name="Demo Nutzer", email=DEMO_EMAIL)
+        user.set_password(DEMO_PASSWORD)
+        db.session.add(user)
+        db.session.flush()
+
+        mathe = Studiengang(name="Mathematik", user_id=user.id)
+        physik = Studiengang(name="Physik", user_id=user.id)
+        vwl = Studiengang(name="VWL", user_id=user.id)
         db.session.add_all([mathe, physik, vwl])
         db.session.flush()
 
-        analysis = Modul(name="Analysis I", credits=9, studiengang=mathe)
-        linalg = Modul(name="Lineare Algebra I", credits=9, studiengang=mathe)
-        experimentalphysik = Modul(name="Experimentalphysik I", credits=8, studiengang=physik)
-        mikrooekonomik = Modul(name="Mikroökonomik", credits=6, studiengang=vwl)
-        sprachkurs = Modul(name="Spanisch A1", credits=3, studiengang=None)  # Sonstiges
+        analysis = Modul(name="Analysis I", credits=9, user_id=user.id, studiengaenge=[mathe])
+        linalg = Modul(name="Lineare Algebra I", credits=9, user_id=user.id, studiengaenge=[mathe])
+        experimentalphysik = Modul(
+            name="Experimentalphysik I", credits=8, user_id=user.id, studiengaenge=[physik]
+        )
+        mikrooekonomik = Modul(name="Mikroökonomik", credits=6, user_id=user.id, studiengaenge=[vwl])
+        sprachkurs = Modul(name="Spanisch A1", credits=3, user_id=user.id, studiengaenge=[])  # Sonstiges
 
         db.session.add_all([analysis, linalg, experimentalphysik, mikrooekonomik, sprachkurs])
         db.session.flush()
@@ -62,12 +72,13 @@ def run():
             name="Mathe für Physiker",
             credits=14,
             studiengang=physik,
+            user_id=user.id,
             source_module=[analysis, linalg],
         )
         db.session.add(mathe_fuer_physik)
 
         db.session.commit()
-        print("Seed-Daten erfolgreich angelegt.")
+        print(f"Seed-Daten erfolgreich angelegt. Demo-Login: {DEMO_EMAIL} / {DEMO_PASSWORD}")
 
 
 if __name__ == "__main__":

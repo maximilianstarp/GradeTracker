@@ -1,6 +1,12 @@
 """SQLAlchemy models for the Grade Tracker domain.
 
-Studiengang (program) -> Modul (module) -> GradeAttempt / SubmissionSeries -> Submission
+User owns Studiengang / Modul / KombiModul directly (each has its own
+user_id) so a Modul without any Studiengang ("Sonstiges") still has an
+owner. Modul <-> Studiengang is many-to-many: a module can be credited in
+several programs at once, each accreditation independent - the same
+principle already used for KombiModul's source modules.
+
+Studiengang (program) <-> Modul (module) -> GradeAttempt / SubmissionSeries -> Submission
 KombiModul combines several Module into one graded, credited unit inside a Studiengang.
 """
 from __future__ import annotations
@@ -8,6 +14,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import check_password_hash, generate_password_hash
 
 db = SQLAlchemy()
 
@@ -22,16 +29,46 @@ kombimodul_module = db.Table(
     db.Column("modul_id", db.Integer, db.ForeignKey("modul.id", ondelete="CASCADE"), primary_key=True),
 )
 
+modul_studiengang = db.Table(
+    "modul_studiengang",
+    db.Column("modul_id", db.Integer, db.ForeignKey("modul.id", ondelete="CASCADE"), primary_key=True),
+    db.Column("studiengang_id", db.Integer, db.ForeignKey("studiengang.id", ondelete="CASCADE"), primary_key=True),
+)
+
+
+class User(db.Model):
+    __tablename__ = "user"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(120), nullable=False)
+    email = db.Column(db.String(255), nullable=False, unique=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow)
+
+    def set_password(self, password: str) -> None:
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password: str) -> bool:
+        return check_password_hash(self.password_hash, password)
+
+    def to_dict(self) -> dict:
+        return {"id": self.id, "name": self.name, "email": self.email}
+
 
 class Studiengang(db.Model):
     __tablename__ = "studiengang"
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120), nullable=False, unique=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
+    name = db.Column(db.String(120), nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow)
 
-    module = db.relationship("Modul", back_populates="studiengang", lazy="selectin")
+    module = db.relationship(
+        "Modul", secondary=modul_studiengang, back_populates="studiengaenge", lazy="selectin"
+    )
     kombi_module = db.relationship("KombiModul", back_populates="studiengang", lazy="selectin")
+
+    __table_args__ = (db.UniqueConstraint("user_id", "name", name="uq_studiengang_user_name"),)
 
     def to_dict(self) -> dict:
         return {"id": self.id, "name": self.name}
@@ -41,12 +78,14 @@ class Modul(db.Model):
     __tablename__ = "modul"
 
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
     name = db.Column(db.String(200), nullable=False)
     credits = db.Column(db.Float, nullable=False)
-    studiengang_id = db.Column(db.Integer, db.ForeignKey("studiengang.id", ondelete="SET NULL"), nullable=True)
     created_at = db.Column(db.DateTime, default=utcnow)
 
-    studiengang = db.relationship("Studiengang", back_populates="module")
+    studiengaenge = db.relationship(
+        "Studiengang", secondary=modul_studiengang, back_populates="module", lazy="selectin"
+    )
     grade_attempts = db.relationship(
         "GradeAttempt", back_populates="modul", cascade="all, delete-orphan", lazy="selectin",
         order_by="GradeAttempt.slot",
@@ -62,7 +101,8 @@ class Modul(db.Model):
             "id": self.id,
             "name": self.name,
             "credits": self.credits,
-            "studiengang_id": self.studiengang_id,
+            "studiengang_ids": [s.id for s in self.studiengaenge],
+            "studiengaenge": [{"id": s.id, "name": s.name} for s in self.studiengaenge],
             "grade_attempts": [g.to_dict() for g in self.grade_attempts],
         }
 
@@ -176,6 +216,7 @@ class KombiModul(db.Model):
     __tablename__ = "kombi_modul"
 
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
     name = db.Column(db.String(200), nullable=False)
     credits = db.Column(db.Float, nullable=False)
     studiengang_id = db.Column(db.Integer, db.ForeignKey("studiengang.id", ondelete="CASCADE"), nullable=False)

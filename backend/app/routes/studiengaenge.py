@@ -1,18 +1,21 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, g, jsonify, request
 
+from app.auth import login_required
 from app.models import Studiengang, db
-from app.utils import error
+from app.utils import error, get_owned
 
 bp = Blueprint("studiengaenge", __name__, url_prefix="/api/studiengaenge")
 
 
 @bp.get("")
+@login_required
 def list_studiengaenge():
-    rows = Studiengang.query.order_by(Studiengang.name).all()
+    rows = Studiengang.query.filter_by(user_id=g.current_user.id).order_by(Studiengang.name).all()
     return jsonify([s.to_dict() for s in rows])
 
 
 @bp.post("")
+@login_required
 def create_studiengang():
     data = request.get_json(silent=True) or {}
     name = (data.get("name") or "").strip()
@@ -20,26 +23,31 @@ def create_studiengang():
         return error("name ist erforderlich")
     if name.lower() == "sonstiges":
         return error("'Sonstiges' ist reserviert und kein eigener Studiengang")
-    if Studiengang.query.filter(db.func.lower(Studiengang.name) == name.lower()).first():
+    exists = Studiengang.query.filter(
+        Studiengang.user_id == g.current_user.id, db.func.lower(Studiengang.name) == name.lower()
+    ).first()
+    if exists:
         return error("Studiengang existiert bereits", 409)
 
-    sg = Studiengang(name=name)
+    sg = Studiengang(name=name, user_id=g.current_user.id)
     db.session.add(sg)
     db.session.commit()
     return jsonify(sg.to_dict()), 201
 
 
 @bp.get("/<int:studiengang_id>")
+@login_required
 def get_studiengang(studiengang_id: int):
-    sg = db.session.get(Studiengang, studiengang_id)
+    sg = get_owned(Studiengang, studiengang_id, g.current_user.id)
     if not sg:
         return error("Studiengang nicht gefunden", 404)
     return jsonify(sg.to_dict())
 
 
 @bp.patch("/<int:studiengang_id>")
+@login_required
 def update_studiengang(studiengang_id: int):
-    sg = db.session.get(Studiengang, studiengang_id)
+    sg = get_owned(Studiengang, studiengang_id, g.current_user.id)
     if not sg:
         return error("Studiengang nicht gefunden", 404)
     data = request.get_json(silent=True) or {}
@@ -53,8 +61,9 @@ def update_studiengang(studiengang_id: int):
 
 
 @bp.delete("/<int:studiengang_id>")
+@login_required
 def delete_studiengang(studiengang_id: int):
-    sg = db.session.get(Studiengang, studiengang_id)
+    sg = get_owned(Studiengang, studiengang_id, g.current_user.id)
     if not sg:
         return error("Studiengang nicht gefunden", 404)
     db.session.delete(sg)

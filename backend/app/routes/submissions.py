@@ -1,14 +1,30 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, g, jsonify, request
 
+from app.auth import login_required
 from app.models import Submission, SubmissionSeries, db
 from app.utils import error
 
 bp = Blueprint("submissions", __name__, url_prefix="/api")
 
 
-@bp.patch("/series/<int:series_id>")
-def update_series(series_id: int):
+def _get_owned_series(series_id: int) -> SubmissionSeries | None:
     series = db.session.get(SubmissionSeries, series_id)
+    if not series or series.modul.user_id != g.current_user.id:
+        return None
+    return series
+
+
+def _get_owned_submission(submission_id: int) -> Submission | None:
+    submission = db.session.get(Submission, submission_id)
+    if not submission or submission.series.modul.user_id != g.current_user.id:
+        return None
+    return submission
+
+
+@bp.patch("/series/<int:series_id>")
+@login_required
+def update_series(series_id: int):
+    series = _get_owned_series(series_id)
     if not series:
         return error("Übungsserie nicht gefunden", 404)
 
@@ -41,8 +57,9 @@ def update_series(series_id: int):
 
 
 @bp.delete("/series/<int:series_id>")
+@login_required
 def delete_series(series_id: int):
-    series = db.session.get(SubmissionSeries, series_id)
+    series = _get_owned_series(series_id)
     if not series:
         return error("Übungsserie nicht gefunden", 404)
     modul = series.modul
@@ -52,8 +69,9 @@ def delete_series(series_id: int):
 
 
 @bp.post("/series/<int:series_id>/submissions")
+@login_required
 def create_submission(series_id: int):
-    series = db.session.get(SubmissionSeries, series_id)
+    series = _get_owned_series(series_id)
     if not series:
         return error("Übungsserie nicht gefunden", 404)
 
@@ -90,8 +108,9 @@ def create_submission(series_id: int):
 
 
 @bp.patch("/submissions/<int:submission_id>")
+@login_required
 def update_submission(submission_id: int):
-    submission = db.session.get(Submission, submission_id)
+    submission = _get_owned_submission(submission_id)
     if not submission:
         return error("Abgabe nicht gefunden", 404)
 
@@ -123,8 +142,9 @@ def update_submission(submission_id: int):
 
 
 @bp.delete("/submissions/<int:submission_id>")
+@login_required
 def delete_submission(submission_id: int):
-    submission = db.session.get(Submission, submission_id)
+    submission = _get_owned_submission(submission_id)
     if not submission:
         return error("Abgabe nicht gefunden", 404)
     modul = submission.series.modul

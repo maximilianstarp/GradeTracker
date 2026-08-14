@@ -1,7 +1,8 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, g, jsonify, request
 
+from app.auth import login_required
 from app.models import KombiModul, Modul, Studiengang, db
-from app.utils import error
+from app.utils import error, get_owned
 
 bp = Blueprint("kombimodule", __name__, url_prefix="/api/kombimodule")
 
@@ -16,15 +17,16 @@ def _resolve_source_modules(raw_ids):
     if len(set(ids)) != len(ids):
         return None, error("source_module_ids dürfen sich nicht wiederholen")
 
-    modules = Modul.query.filter(Modul.id.in_(ids)).all()
+    modules = Modul.query.filter(Modul.id.in_(ids), Modul.user_id == g.current_user.id).all()
     if len(modules) != len(ids):
         return None, error("mindestens ein Quellmodul wurde nicht gefunden", 404)
     return modules, None
 
 
 @bp.get("")
+@login_required
 def list_kombimodule():
-    q = KombiModul.query
+    q = KombiModul.query.filter_by(user_id=g.current_user.id)
     if "studiengang_id" in request.args:
         try:
             q = q.filter(KombiModul.studiengang_id == int(request.args["studiengang_id"]))
@@ -35,6 +37,7 @@ def list_kombimodule():
 
 
 @bp.post("")
+@login_required
 def create_kombimodul():
     data = request.get_json(silent=True) or {}
     name = (data.get("name") or "").strip()
@@ -54,30 +57,38 @@ def create_kombimodul():
         studiengang_id = int(studiengang_id)
     except (TypeError, ValueError):
         return error("studiengang_id ist erforderlich (Kombi-Module benötigen einen Studiengang)")
-    if not db.session.get(Studiengang, studiengang_id):
+    if not get_owned(Studiengang, studiengang_id, g.current_user.id):
         return error("Studiengang nicht gefunden", 404)
 
     modules, err = _resolve_source_modules(data.get("source_module_ids"))
     if err:
         return err
 
-    kombi = KombiModul(name=name, credits=credits, studiengang_id=studiengang_id, source_module=modules)
+    kombi = KombiModul(
+        name=name,
+        credits=credits,
+        studiengang_id=studiengang_id,
+        user_id=g.current_user.id,
+        source_module=modules,
+    )
     db.session.add(kombi)
     db.session.commit()
     return jsonify(kombi.to_dict()), 201
 
 
 @bp.get("/<int:kombi_id>")
+@login_required
 def get_kombimodul(kombi_id: int):
-    kombi = db.session.get(KombiModul, kombi_id)
+    kombi = get_owned(KombiModul, kombi_id, g.current_user.id)
     if not kombi:
         return error("Kombi-Modul nicht gefunden", 404)
     return jsonify(kombi.to_dict())
 
 
 @bp.patch("/<int:kombi_id>")
+@login_required
 def update_kombimodul(kombi_id: int):
-    kombi = db.session.get(KombiModul, kombi_id)
+    kombi = get_owned(KombiModul, kombi_id, g.current_user.id)
     if not kombi:
         return error("Kombi-Modul nicht gefunden", 404)
 
@@ -100,7 +111,7 @@ def update_kombimodul(kombi_id: int):
             sid = int(data["studiengang_id"])
         except (TypeError, ValueError):
             return error("studiengang_id muss eine Zahl sein")
-        if not db.session.get(Studiengang, sid):
+        if not get_owned(Studiengang, sid, g.current_user.id):
             return error("Studiengang nicht gefunden", 404)
         kombi.studiengang_id = sid
     if "source_module_ids" in data:
@@ -114,8 +125,9 @@ def update_kombimodul(kombi_id: int):
 
 
 @bp.delete("/<int:kombi_id>")
+@login_required
 def delete_kombimodul(kombi_id: int):
-    kombi = db.session.get(KombiModul, kombi_id)
+    kombi = get_owned(KombiModul, kombi_id, g.current_user.id)
     if not kombi:
         return error("Kombi-Modul nicht gefunden", 404)
     db.session.delete(kombi)

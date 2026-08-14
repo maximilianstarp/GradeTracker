@@ -1,6 +1,7 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, g, jsonify
 
 from app import grading
+from app.auth import login_required
 from app.models import KombiModul, Modul, Studiengang
 
 bp = Blueprint("stats", __name__, url_prefix="/api/stats")
@@ -33,22 +34,26 @@ def _bucket_stats(module: list[Modul], kombi_module: list[KombiModul]) -> dict:
 
 
 @bp.get("/overview")
+@login_required
 def overview():
-    studiengaenge = Studiengang.query.order_by(Studiengang.name).all()
+    user_id = g.current_user.id
+    studiengaenge = Studiengang.query.filter_by(user_id=user_id).order_by(Studiengang.name).all()
 
     per_studiengang = []
     for sg in studiengaenge:
         stats = _bucket_stats(sg.module, sg.kombi_module)
         per_studiengang.append({"id": sg.id, "name": sg.name, **stats})
 
-    sonstige_module = Modul.query.filter(Modul.studiengang_id.is_(None)).all()
+    sonstige_module = Modul.query.filter(
+        Modul.user_id == user_id, ~Modul.studiengaenge.any()
+    ).all()
     sonstiges = {"id": None, "name": "Sonstiges", **_bucket_stats(sonstige_module, [])}
 
     # Every Modul and KombiModul row is counted exactly once here, regardless of
-    # whether a Modul also feeds into a KombiModul elsewhere - each row represents
-    # its own credit accreditation.
-    all_module = Modul.query.all()
-    all_kombi = KombiModul.query.all()
+    # whether a Modul also feeds into a KombiModul or several Studiengänge
+    # elsewhere - each row represents its own credit accreditation.
+    all_module = Modul.query.filter_by(user_id=user_id).all()
+    all_kombi = KombiModul.query.filter_by(user_id=user_id).all()
     overall = _bucket_stats(all_module, all_kombi)
 
     return jsonify(

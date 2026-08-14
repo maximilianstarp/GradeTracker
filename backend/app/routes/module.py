@@ -1,44 +1,51 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, g, jsonify, request
 
+from app.auth import login_required
 from app.models import GradeAttempt, Modul, Studiengang, SubmissionSeries, db
-from app.utils import error
+from app.utils import error, get_owned
 
 bp = Blueprint("module", __name__, url_prefix="/api")
 
 
-def _parse_studiengang_id(data: dict):
-    """Returns (ok, value_or_error_response). None means 'Sonstiges'."""
-    if "studiengang_id" not in data:
-        return True, None
-    raw = data.get("studiengang_id")
-    if raw in (None, "", "null", "sonstiges"):
-        return True, None
+def _resolve_studiengaenge(raw_ids) -> tuple[list[Studiengang] | None, tuple | None]:
+    """Returns (studiengaenge, error_response). Empty list is valid = Sonstiges."""
+    if raw_ids is None:
+        return [], None
+    if not isinstance(raw_ids, list):
+        return None, error("studiengang_ids muss eine Liste sein")
     try:
-        sid = int(raw)
+        ids = [int(i) for i in raw_ids]
     except (TypeError, ValueError):
-        return False, error("studiengang_id muss eine Zahl oder null sein")
-    if not db.session.get(Studiengang, sid):
-        return False, error("Studiengang nicht gefunden", 404)
-    return True, sid
+        return None, error("studiengang_ids müssen Zahlen sein")
+
+    rows = Studiengang.query.filter(
+        Studiengang.id.in_(ids), Studiengang.user_id == g.current_user.id
+    ).all()
+    if len(rows) != len(set(ids)):
+        return None, error("mindestens ein Studiengang wurde nicht gefunden", 404)
+    return rows, None
 
 
 @bp.get("/module")
+@login_required
 def list_module():
-    q = Modul.query
+    q = Modul.query.filter_by(user_id=g.current_user.id)
     if "studiengang_id" in request.args:
         raw = request.args["studiengang_id"]
         if raw in ("", "null", "sonstiges"):
-            q = q.filter(Modul.studiengang_id.is_(None))
+            q = q.filter(~Modul.studiengaenge.any())
         else:
             try:
-                q = q.filter(Modul.studiengang_id == int(raw))
+                sid = int(raw)
             except ValueError:
                 return error("studiengang_id muss eine Zahl sein")
+            q = q.filter(Modul.studiengaenge.any(Studiengang.id == sid))
     rows = q.order_by(Modul.name).all()
     return jsonify([m.to_dict() for m in rows])
 
 
 @bp.post("/module")
+@login_required
 def create_modul():
     data = request.get_json(silent=True) or {}
     name = (data.get("name") or "").strip()
@@ -53,27 +60,29 @@ def create_modul():
     if credits <= 0:
         return error("credits muss positiv sein")
 
-    ok, sid_or_err = _parse_studiengang_id(data)
-    if not ok:
-        return sid_or_err
+    studiengaenge, err = _resolve_studiengaenge(data.get("studiengang_ids"))
+    if err:
+        return err
 
-    modul = Modul(name=name, credits=credits, studiengang_id=sid_or_err)
+    modul = Modul(name=name, credits=credits, user_id=g.current_user.id, studiengaenge=studiengaenge)
     db.session.add(modul)
     db.session.commit()
     return jsonify(modul.to_dict()), 201
 
 
 @bp.get("/module/<int:modul_id>")
+@login_required
 def get_modul(modul_id: int):
-    modul = db.session.get(Modul, modul_id)
+    modul = get_owned(Modul, modul_id, g.current_user.id)
     if not modul:
         return error("Modul nicht gefunden", 404)
     return jsonify(modul.to_dict())
 
 
 @bp.patch("/module/<int:modul_id>")
+@login_required
 def update_modul(modul_id: int):
-    modul = db.session.get(Modul, modul_id)
+    modul = get_owned(Modul, modul_id, g.current_user.id)
     if not modul:
         return error("Modul nicht gefunden", 404)
     data = request.get_json(silent=True) or {}
@@ -93,19 +102,20 @@ def update_modul(modul_id: int):
             return error("credits muss positiv sein")
         modul.credits = credits
 
-    if "studiengang_id" in data:
-        ok, sid_or_err = _parse_studiengang_id(data)
-        if not ok:
-            return sid_or_err
-        modul.studiengang_id = sid_or_err
+    if "studiengang_ids" in data:
+        studiengaenge, err = _resolve_studiengaenge(data.get("studiengang_ids"))
+        if err:
+            return err
+        modul.studiengaenge = studiengaenge
 
     db.session.commit()
     return jsonify(modul.to_dict())
 
 
 @bp.delete("/module/<int:modul_id>")
+@login_required
 def delete_modul(modul_id: int):
-    modul = db.session.get(Modul, modul_id)
+    modul = get_owned(Modul, modul_id, g.current_user.id)
     if not modul:
         return error("Modul nicht gefunden", 404)
     db.session.delete(modul)
@@ -117,8 +127,9 @@ VALID_KINDS = {"numeric", "pass", "fail"}
 
 
 @bp.post("/module/<int:modul_id>/grades")
+@login_required
 def upsert_grade(modul_id: int):
-    modul = db.session.get(Modul, modul_id)
+    modul = get_owned(Modul, modul_id, g.current_user.id)
     if not modul:
         return error("Modul nicht gefunden", 404)
 
@@ -159,9 +170,10 @@ def upsert_grade(modul_id: int):
 
 
 @bp.delete("/grades/<int:grade_id>")
+@login_required
 def delete_grade(grade_id: int):
     attempt = db.session.get(GradeAttempt, grade_id)
-    if not attempt:
+    if not attempt or attempt.modul.user_id != g.current_user.id:
         return error("Note nicht gefunden", 404)
     modul_id = attempt.modul_id
     db.session.delete(attempt)
@@ -171,8 +183,9 @@ def delete_grade(grade_id: int):
 
 
 @bp.post("/module/<int:modul_id>/series")
+@login_required
 def create_series(modul_id: int):
-    modul = db.session.get(Modul, modul_id)
+    modul = get_owned(Modul, modul_id, g.current_user.id)
     if not modul:
         return error("Modul nicht gefunden", 404)
 

@@ -15,3 +15,14 @@ def app():
 @pytest.fixture()
 def client(app):
     return app.test_client()
+
+
+@pytest.fixture()
+def auth_header(client):
+    """Registers a fresh user and returns an Authorization header dict for it."""
+    resp = client.post(
+        "/api/auth/register",
+        json={"name": "Test User", "email": "test@example.com", "password": "testpass123"},
+    )
+    token = resp.get_json()["token"]
+    return {"Authorization": f"Bearer {token}"}
