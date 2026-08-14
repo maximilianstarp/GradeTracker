@@ -42,6 +42,39 @@ class TestStudiengaenge:
         resp = client.get(f"/api/module/{modul['id']}", headers=auth_header)
         assert resp.get_json()["studiengang_ids"] == []
 
+    def test_delete_with_multi_assigned_modul_keeps_it_in_other_studiengang(self, client, auth_header):
+        mathe = create_studiengang(client, auth_header, "Mathematik").get_json()
+        physik = create_studiengang(client, auth_header, "Physik").get_json()
+        modul = create_modul(client, auth_header, [mathe["id"], physik["id"]]).get_json()
+
+        resp = client.delete(f"/api/studiengaenge/{mathe['id']}", headers=auth_header)
+        assert resp.status_code == 204
+
+        resp = client.get(f"/api/module/{modul['id']}", headers=auth_header)
+        assert resp.get_json()["studiengang_ids"] == [physik["id"]]
+
+    def test_delete_cascades_to_its_kombimodule(self, client, auth_header):
+        mathe = create_studiengang(client, auth_header, "Mathematik").get_json()
+        physik = create_studiengang(client, auth_header, "Physik").get_json()
+        m1 = create_modul(client, auth_header, [mathe["id"]], "A", 9).get_json()
+        m2 = create_modul(client, auth_header, [mathe["id"]], "B", 9).get_json()
+        kombi = client.post(
+            "/api/kombimodule",
+            json={
+                "name": "Kombi",
+                "credits": 14,
+                "studiengang_id": physik["id"],
+                "source_module_ids": [m1["id"], m2["id"]],
+            },
+            headers=auth_header,
+        ).get_json()
+
+        resp = client.delete(f"/api/studiengaenge/{physik['id']}", headers=auth_header)
+        assert resp.status_code == 204
+
+        resp = client.get(f"/api/kombimodule/{kombi['id']}", headers=auth_header)
+        assert resp.status_code == 404
+
 
 class TestModule:
     def test_create_modul_in_sonstiges(self, client, auth_header):

@@ -11,12 +11,27 @@ KombiModul combines several Module into one graded, credited unit inside a Studi
 """
 from __future__ import annotations
 
+import sqlite3
 from datetime import datetime, timezone
 
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 from werkzeug.security import check_password_hash, generate_password_hash
 
 db = SQLAlchemy()
+
+
+@event.listens_for(Engine, "connect")
+def _enable_sqlite_foreign_keys(dbapi_connection, _connection_record):
+    """SQLite ignores FK constraints (including ON DELETE CASCADE/SET NULL)
+    unless explicitly turned on per connection - without this, the ondelete=
+    behavior declared throughout this module below would silently not apply,
+    leaving orphaned rows behind on delete."""
+    if isinstance(dbapi_connection, sqlite3.Connection):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 
 def utcnow() -> datetime:
@@ -66,7 +81,15 @@ class Studiengang(db.Model):
     module = db.relationship(
         "Modul", secondary=modul_studiengang, back_populates="studiengaenge", lazy="selectin"
     )
-    kombi_module = db.relationship("KombiModul", back_populates="studiengang", lazy="selectin")
+    # KombiModul.studiengang_id is NOT NULL, so it must be deleted (not
+    # nulled out) when its Studiengang goes away - explicit ORM cascade
+    # rather than relying solely on the DB-level ondelete=CASCADE.
+    kombi_module = db.relationship(
+        "KombiModul",
+        back_populates="studiengang",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (db.UniqueConstraint("user_id", "name", name="uq_studiengang_user_name"),)
 
