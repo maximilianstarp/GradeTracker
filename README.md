@@ -25,9 +25,15 @@ Tabellenkalkulation nachzubauen.
 
 ## Features
 
+- **Mehrbenutzerfähig** – Registrierung mit Name/E-Mail/Passwort (ohne
+  E-Mail-Verifizierung), Login/Logout, Profil bearbeiten. Alle Daten sind
+  strikt pro Nutzer isoliert.
 - **Studiengänge verwalten** – beliebig viele Studiengänge (z. B. Mathematik,
   Physik, VWL) anlegen, umbenennen, löschen. Module ohne Zuordnung landen
   automatisch unter „Sonstiges".
+- **Module in mehreren Studiengängen** – ein Modul kann gleichzeitig in
+  mehreren Studiengängen angerechnet werden, jede Zuordnung zählt
+  unabhängig (gleiches Prinzip wie bei Kombi-Modulen).
 - **Module mit bis zu 3 Notenversuchen** – jeder Versuch ist entweder eine
   Note (deutsche Skala 1,0–5,0) oder „bestanden"/„nicht bestanden". Es zählt
   automatisch die beste Note.
@@ -68,22 +74,32 @@ testbare Funktionen ohne Flask- oder Datenbank-Abhängigkeit
 
 ```mermaid
 erDiagram
-    STUDIENGANG ||--o{ MODUL : enthaelt
+    USER ||--o{ STUDIENGANG : besitzt
+    USER ||--o{ MODUL : besitzt
+    USER ||--o{ KOMBI_MODUL : besitzt
+    STUDIENGANG }o--o{ MODUL : "ordnet zu (>=0)"
     STUDIENGANG ||--o{ KOMBI_MODUL : enthaelt
     MODUL ||--o{ GRADE_ATTEMPT : "bis zu 3"
     MODUL ||--o{ SUBMISSION_SERIES : hat
     SUBMISSION_SERIES ||--o{ SUBMISSION : hat
     KOMBI_MODUL }o--o{ MODUL : "kombiniert (>=2)"
 
+    USER {
+        int id
+        string name
+        string email "unique"
+        string password_hash
+    }
     STUDIENGANG {
         int id
+        int user_id
         string name
     }
     MODUL {
         int id
+        int user_id
         string name
         float credits
-        int studiengang_id "nullable -> Sonstiges"
     }
     GRADE_ATTEMPT {
         int id
@@ -105,11 +121,16 @@ erDiagram
     }
     KOMBI_MODUL {
         int id
+        int user_id
         string name
         float credits
         int studiengang_id
     }
 ```
+
+Ein Modul ohne Studiengang-Zuordnung gilt als „Sonstiges"; mit mehreren
+Zuordnungen zählt es unabhängig in jedem zugeordneten Studiengang (M:N über
+eine Assoziationstabelle, analog zu den Quellmodulen eines Kombi-Moduls).
 
 ## Tech-Stack
 
@@ -134,13 +155,17 @@ docker compose up --build
 
 > Ports lassen sich über `NEXT_PUBLIC_API_URL` (siehe `.env.example`) bzw. die
 > `ports:`-Zuordnung in `docker-compose.yml` anpassen, falls sie lokal belegt
-> sind.
+> sind. Für produktivere Nutzung solltest du außerdem `SECRET_KEY` (signiert
+> die Login-Tokens) in einer `.env`-Datei auf einen eigenen Zufallswert
+> setzen – siehe `.env.example`.
 
-Beispieldaten (Analysis, Lineare Algebra, das Kombi-Modul „Mathe für
-Physiker", …) lassen sich optional einspielen:
+Zuerst über die Weboberfläche registrieren (`/signup`), dann anmelden.
+Optional lassen sich Beispieldaten (Analysis, Lineare Algebra, das
+Kombi-Modul „Mathe für Physiker", …) unter einem Demo-Login einspielen:
 
 ```bash
 docker compose exec backend python seed.py
+# Demo-Login: demo@example.com / demo12345
 ```
 
 ### Lokale Entwicklung ohne Docker
@@ -171,13 +196,20 @@ API-Routen sind über Flask-Testclient-Tests abgedeckt.
 
 ## API-Überblick
 
-Alle Endpunkte unter `/api`, JSON-basiert.
+Alle Endpunkte unter `/api`, JSON-basiert. Bis auf `/api/health` und
+`/api/auth/register`/`/api/auth/login` erfordert jeder Endpunkt einen
+`Authorization: Bearer <token>`-Header und liefert nur Daten des
+angemeldeten Nutzers.
 
 | Methode & Pfad | Zweck |
 |---|---|
+| `POST /auth/register` | Registrieren (`name`, `email`, `password`) → Token |
+| `POST /auth/login` | Anmelden (`email`, `password`) → Token |
+| `GET /auth/me` | Aktuellen Nutzer abrufen |
+| `PATCH /auth/me` | Name/E-Mail/Passwort ändern (`current_password` erforderlich) |
 | `GET/POST /studiengaenge` | Studiengänge auflisten / anlegen |
 | `PATCH/DELETE /studiengaenge/<id>` | Umbenennen / löschen |
-| `GET/POST /module` | Module auflisten (optional `?studiengang_id=`) / anlegen |
+| `GET/POST /module` | Module auflisten (optional `?studiengang_id=`) / anlegen (`studiengang_ids: []`) |
 | `GET/PATCH/DELETE /module/<id>` | Modul lesen / bearbeiten / löschen |
 | `POST /module/<id>/grades` | Notenversuch (Slot 1–3) setzen |
 | `DELETE /grades/<id>` | Notenversuch löschen |
@@ -196,15 +228,16 @@ grade_tracker/
 ├── backend/
 │   ├── app/
 │   │   ├── grading.py       # reine Berechnungs-Logik (Notenschnitt, Zulassung, Kombi-Mittelung)
+│   │   ├── auth.py          # Bearer-Token-Erzeugung/-Prüfung, login_required
 │   │   ├── models.py        # SQLAlchemy-Modelle
-│   │   └── routes/          # Flask-Blueprints (REST-Endpunkte)
+│   │   └── routes/          # Flask-Blueprints (REST-Endpunkte, inkl. auth.py)
 │   ├── tests/                # pytest
-│   └── seed.py                # Beispieldaten
+│   └── seed.py                # Beispieldaten inkl. Demo-User
 └── frontend/
     └── src/
-        ├── app/                # Next.js App Router Seiten
-        ├── components/         # UI-Bausteine (ProgressBar, GradeBadge, …)
-        └── lib/                # API-Client & Typen
+        ├── app/                # Next.js App Router Seiten (inkl. login/signup/account)
+        ├── components/         # UI-Bausteine (ProgressBar, GradeBadge, ConfirmDialog, …)
+        └── lib/                # API-Client, Typen, AuthContext
 ```
 
 ## Lizenz

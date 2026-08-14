@@ -5,6 +5,7 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: sqlite:////app/instance/grades.db
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me-in-production}
     volumes:
       - backend-data:/app/instance
     ports:
