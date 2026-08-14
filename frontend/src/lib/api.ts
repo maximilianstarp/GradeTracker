@@ -1,6 +1,7 @@
-import type { KombiModul, Modul, Overview, Studiengang } from "./types";
+import type { KombiModul, Modul, Overview, Studiengang, User } from "./types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+const TOKEN_KEY = "grade-tracker-token";
 
 export class ApiError extends Error {
   status: number;
@@ -10,21 +11,62 @@ export class ApiError extends Error {
   }
 }
 
+export const tokenStore = {
+  get: (): string | null => (typeof window === "undefined" ? null : localStorage.getItem(TOKEN_KEY)),
+  set: (token: string) => localStorage.setItem(TOKEN_KEY, token),
+  clear: () => localStorage.removeItem(TOKEN_KEY),
+};
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = tokenStore.get();
+
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
-    headers: { "Content-Type": "application/json", ...options?.headers },
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options?.headers,
+    },
     cache: "no-store",
   });
 
   if (res.status === 204) return undefined as T;
 
   const body = await res.json().catch(() => null);
+
   if (!res.ok) {
+    // A 401 while we *had* a token means the session expired/is invalid -
+    // bounce to login. A 401 without a token (e.g. a failed login attempt
+    // itself) is a normal error the calling page should display inline.
+    if (res.status === 401 && token && typeof window !== "undefined") {
+      tokenStore.clear();
+      if (!window.location.pathname.startsWith("/login")) {
+        window.location.href = "/login";
+      }
+    }
     throw new ApiError(body?.error ?? `Request fehlgeschlagen (${res.status})`, res.status);
   }
   return body as T;
 }
+
+// Auth
+export const registerUser = (data: { name: string; email: string; password: string }) =>
+  request<{ token: string; user: User }>("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+export const loginUser = (data: { email: string; password: string }) =>
+  request<{ token: string; user: User }>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+export const getMe = () => request<User>("/api/auth/me");
+export const updateMe = (data: {
+  current_password: string;
+  name?: string;
+  email?: string;
+  new_password?: string;
+}) => request<User>("/api/auth/me", { method: "PATCH", body: JSON.stringify(data) });
 
 // Studiengänge
 export const listStudiengaenge = () => request<Studiengang[]>("/api/studiengaenge");
@@ -44,11 +86,11 @@ export const listModule = (studiengangId?: number | null) => {
   return request<Modul[]>(`/api/module${qs}`);
 };
 export const getModul = (id: number) => request<Modul>(`/api/module/${id}`);
-export const createModul = (data: { name: string; credits: number; studiengang_id: number | null }) =>
+export const createModul = (data: { name: string; credits: number; studiengang_ids: number[] }) =>
   request<Modul>("/api/module", { method: "POST", body: JSON.stringify(data) });
 export const updateModul = (
   id: number,
-  data: Partial<{ name: string; credits: number; studiengang_id: number | null }>
+  data: Partial<{ name: string; credits: number; studiengang_ids: number[] }>
 ) => request<Modul>(`/api/module/${id}`, { method: "PATCH", body: JSON.stringify(data) });
 export const deleteModul = (id: number) => request<void>(`/api/module/${id}`, { method: "DELETE" });
 

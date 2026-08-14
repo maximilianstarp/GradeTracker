@@ -9,6 +9,7 @@ import {
   deleteSubmission,
 } from "@/lib/api";
 import { ProgressBar } from "@/components/ProgressBar";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { formatPercent } from "@/lib/format";
 import type { Modul, SubmissionSeries } from "@/lib/types";
 
@@ -118,6 +119,7 @@ function SeriesCard({
   onModulUpdate: (modul: Modul) => void;
   onError: (msg: string | null) => void;
 }) {
+  const confirm = useConfirm();
   const [week, setWeek] = useState("");
   const [achieved, setAchieved] = useState("");
   const [max, setMax] = useState("");
@@ -151,7 +153,13 @@ function SeriesCard({
   }
 
   async function handleDeleteSeries() {
-    if (!confirm(`Übungsserie "${series.name}" wirklich löschen?`)) return;
+    const ok = await confirm({
+      title: "Übungsserie löschen",
+      message: `„${series.name}“ wird inklusive aller erfassten Abgaben gelöscht.`,
+      confirmLabel: "Löschen",
+      danger: true,
+    });
+    if (!ok) return;
     onError(null);
     try {
       const modul = await deleteSeries(series.id);

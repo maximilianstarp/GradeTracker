@@ -52,7 +52,6 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-semibold text-text-primary">Dashboard</h1>
-        <p className="mt-1 text-text-secondary">Überblick über alle Studiengänge, Noten und Zulassungen.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -64,13 +63,8 @@ export default function DashboardPage() {
         <StatTile
           label="Gesamt-Credits"
           value={formatCredits(overview.overall.total_credits).replace(" CP", "")}
-          sublabel="über alle Studiengänge"
         />
-        <StatTile
-          label="Offene Zulassungen"
-          value={String(openZulassung.length)}
-          sublabel={openZulassung.length === 0 ? "alles im grünen Bereich" : "Module unter der Schwelle"}
-        />
+        <StatTile label="Offene Zulassungen" value={String(openZulassung.length)} />
       </div>
 
       {rows.length > 0 && (

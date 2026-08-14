@@ -10,11 +10,13 @@ import {
   listStudiengaenge,
 } from "@/lib/api";
 import { Card } from "@/components/Card";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { GradeBadge } from "@/components/GradeBadge";
 import { formatCredits } from "@/lib/format";
 import type { KombiModul, Modul, Studiengang } from "@/lib/types";
 
 export default function KombimodulePage() {
+  const confirm = useConfirm();
   const [kombimodule, setKombimodule] = useState<KombiModul[]>([]);
   const [studiengaenge, setStudiengaenge] = useState<Studiengang[]>([]);
   const [module, setModule] = useState<Modul[]>([]);
@@ -70,7 +72,13 @@ export default function KombimodulePage() {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm("Kombi-Modul wirklich löschen? Die Quellmodule bleiben erhalten.")) return;
+    const ok = await confirm({
+      title: "Kombi-Modul löschen",
+      message: "Die Quellmodule bleiben erhalten, nur die Zusammenfassung wird gelöscht.",
+      confirmLabel: "Löschen",
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deleteKombimodul(id);
       await load();
@@ -83,10 +91,6 @@ export default function KombimodulePage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-text-primary">Kombi-Module</h1>
-        <p className="mt-1 text-text-secondary">
-          Fasse mehrere Module zu einer eigenen, gemittelten Note mit eigenen Credits zusammen – z. B.
-          Analysis + Lineare Algebra als „Mathe für Physiker“.
-        </p>
       </div>
 
       {error && (

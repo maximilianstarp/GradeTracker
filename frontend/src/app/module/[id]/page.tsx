@@ -11,9 +11,11 @@ import {
   updateModul,
 } from "@/lib/api";
 import { Card } from "@/components/Card";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { GradeBadge } from "@/components/GradeBadge";
 import { GradeSlots } from "@/components/GradeSlots";
 import { SeriesEditor } from "@/components/SeriesEditor";
+import { StudiengangMultiSelect } from "@/components/StudiengangMultiSelect";
 import { formatCredits } from "@/lib/format";
 import type { Modul, Studiengang } from "@/lib/types";
 
@@ -21,6 +23,7 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
   const { id } = use(props.params);
   const modulId = Number(id);
   const router = useRouter();
+  const confirm = useConfirm();
 
   const [modul, setModul] = useState<Modul | null>(null);
   const [studiengaenge, setStudiengaenge] = useState<Studiengang[]>([]);
@@ -28,7 +31,7 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
   const [editingHeader, setEditingHeader] = useState(false);
   const [name, setName] = useState("");
   const [credits, setCredits] = useState("");
-  const [studiengangId, setStudiengangId] = useState("sonstiges");
+  const [studiengangIds, setStudiengangIds] = useState<number[]>([]);
 
   useEffect(() => {
     Promise.all([getModul(modulId), listStudiengaenge()])
@@ -37,7 +40,7 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
         setStudiengaenge(sgs);
         setName(m.name);
         setCredits(String(m.credits));
-        setStudiengangId(m.studiengang_id === null ? "sonstiges" : String(m.studiengang_id));
+        setStudiengangIds(m.studiengang_ids);
       })
       .catch((e) => setError(e instanceof ApiError ? e.message : "Fehler beim Laden"));
   }, [modulId]);
@@ -48,7 +51,7 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
       const updated = await updateModul(modulId, {
         name: name.trim(),
         credits: Number(credits),
-        studiengang_id: studiengangId === "sonstiges" ? null : Number(studiengangId),
+        studiengang_ids: studiengangIds,
       });
       setModul(updated);
       setEditingHeader(false);
@@ -58,7 +61,13 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
   }
 
   async function handleDelete() {
-    if (!confirm(`Modul "${modul?.name}" wirklich löschen?`)) return;
+    const ok = await confirm({
+      title: "Modul löschen",
+      message: `„${modul?.name}“ wird inklusive aller Noten und Abgaben unwiderruflich gelöscht.`,
+      confirmLabel: "Löschen",
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deleteModul(modulId);
       router.push("/module");
@@ -99,28 +108,19 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
               onChange={(e) => setName(e.target.value)}
               className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-lg font-semibold outline-none focus:border-series-1"
             />
-            <div className="flex gap-2">
-              <input
-                value={credits}
-                onChange={(e) => setCredits(e.target.value)}
-                type="number"
-                min="0.5"
-                step="0.5"
-                className="w-32 rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
-              />
-              <select
-                value={studiengangId}
-                onChange={(e) => setStudiengangId(e.target.value)}
-                className="flex-1 rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
-              >
-                <option value="sonstiges">Sonstiges</option>
-                {studiengaenge.map((sg) => (
-                  <option key={sg.id} value={sg.id}>
-                    {sg.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <input
+              value={credits}
+              onChange={(e) => setCredits(e.target.value)}
+              type="number"
+              min="0.5"
+              step="0.5"
+              className="w-32 rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
+            />
+            <StudiengangMultiSelect
+              studiengaenge={studiengaenge}
+              selectedIds={studiengangIds}
+              onChange={setStudiengangIds}
+            />
             <div className="flex gap-2">
               <button
                 onClick={handleSaveHeader}
@@ -141,8 +141,10 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
             <div>
               <h1 className="text-2xl font-semibold text-text-primary">{modul.name}</h1>
               <p className="mt-1 text-text-secondary">
-                {studiengaenge.find((s) => s.id === modul.studiengang_id)?.name ?? "Sonstiges"} ·{" "}
-                {formatCredits(modul.credits)}
+                {modul.studiengaenge.length > 0
+                  ? modul.studiengaenge.map((s) => s.name).join(", ")
+                  : "Sonstiges"}{" "}
+                · {formatCredits(modul.credits)}
               </p>
             </div>
             <div className="flex items-center gap-3">

@@ -9,9 +9,11 @@ import {
   updateStudiengang,
 } from "@/lib/api";
 import { Card } from "@/components/Card";
+import { useConfirm } from "@/components/ConfirmDialog";
 import type { Studiengang } from "@/lib/types";
 
 export default function StudiengaengePage() {
+  const confirm = useConfirm();
   const [studiengaenge, setStudiengaenge] = useState<Studiengang[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +54,13 @@ export default function StudiengaengePage() {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm("Studiengang wirklich löschen? Zugeordnete Module wandern nach 'Sonstiges'.")) return;
+    const ok = await confirm({
+      title: "Studiengang löschen",
+      message: "Zugeordnete Module wandern nach „Sonstiges“. Diese Aktion kann nicht rückgängig gemacht werden.",
+      confirmLabel: "Löschen",
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await deleteStudiengang(id);
       await load();
@@ -65,10 +73,6 @@ export default function StudiengaengePage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-text-primary">Studiengänge</h1>
-        <p className="mt-1 text-text-secondary">
-          Deine Studiengänge, z. B. Mathematik, Physik oder VWL. Module ohne Zuordnung landen automatisch
-          unter „Sonstiges“.
-        </p>
       </div>
 
       {error && (

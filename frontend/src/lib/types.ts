@@ -44,7 +44,8 @@ export interface Modul {
   id: number;
   name: string;
   credits: number;
-  studiengang_id: number | null;
+  studiengang_ids: number[];
+  studiengaenge: { id: number; name: string }[];
   grade_attempts: GradeAttempt[];
   final_grade: FinalGrade;
   series: SubmissionSeries[];
@@ -54,6 +55,12 @@ export interface Modul {
 export interface Studiengang {
   id: number;
   name: string;
+}
+
+export interface User {
+  id: number;
+  name: string;
+  email: string;
 }
 
 export interface KombiModul {

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "@/lib/AuthContext";
 
 const LINKS = [
   { href: "/", label: "Dashboard" },
@@ -12,12 +13,13 @@ const LINKS = [
 
 export function Nav() {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
 
   return (
     <header className="border-b border-border bg-surface">
       <div className="mx-auto flex max-w-5xl items-center gap-6 px-6 py-4">
         <span className="text-base font-semibold text-text-primary">🎓 Grade Tracker</span>
-        <nav className="flex gap-1">
+        <nav className="flex flex-1 gap-1">
           {LINKS.map((link) => {
             const active = link.href === "/" ? pathname === "/" : pathname.startsWith(link.href);
             return (
@@ -35,6 +37,24 @@ export function Nav() {
             );
           })}
         </nav>
+        <div className="flex items-center gap-1 text-sm">
+          <Link
+            href="/account"
+            className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${
+              pathname === "/account"
+                ? "bg-series-1/10 text-series-1"
+                : "text-text-secondary hover:bg-text-muted/10 hover:text-text-primary"
+            }`}
+          >
+            {user?.name}
+          </Link>
+          <button
+            onClick={logout}
+            className="rounded-lg px-3 py-1.5 font-medium text-text-secondary hover:bg-text-muted/10 hover:text-text-primary"
+          >
+            Abmelden
+          </button>
+        </div>
       </div>
     </header>
   );

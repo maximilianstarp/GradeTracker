@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ApiError, createModul, listModule, listStudiengaenge } from "@/lib/api";
 import { Card } from "@/components/Card";
 import { GradeBadge } from "@/components/GradeBadge";
+import { StudiengangMultiSelect } from "@/components/StudiengangMultiSelect";
 import { formatCredits } from "@/lib/format";
 import type { Modul, Studiengang } from "@/lib/types";
 
@@ -20,7 +21,7 @@ export default function ModulePage() {
 
   const [name, setName] = useState("");
   const [credits, setCredits] = useState("");
-  const [studiengangId, setStudiengangId] = useState<string>(SONSTIGES);
+  const [studiengangIds, setStudiengangIds] = useState<number[]>([]);
 
   const load = () =>
     Promise.all([listStudiengaenge(), listModule()])
@@ -37,26 +38,22 @@ export default function ModulePage() {
 
   const filtered = useMemo(() => {
     if (filter === ALLE) return module;
-    if (filter === SONSTIGES) return module.filter((m) => m.studiengang_id === null);
-    return module.filter((m) => m.studiengang_id === Number(filter));
+    if (filter === SONSTIGES) return module.filter((m) => m.studiengang_ids.length === 0);
+    return module.filter((m) => m.studiengang_ids.includes(Number(filter)));
   }, [module, filter]);
 
-  function studiengangName(id: number | null) {
-    if (id === null) return "Sonstiges";
-    return studiengaenge.find((s) => s.id === id)?.name ?? "–";
+  function studiengangNames(m: Modul) {
+    return m.studiengaenge.length > 0 ? m.studiengaenge.map((s) => s.name).join(", ") : "Sonstiges";
   }
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
     setError(null);
     try {
-      await createModul({
-        name: name.trim(),
-        credits: Number(credits),
-        studiengang_id: studiengangId === SONSTIGES ? null : Number(studiengangId),
-      });
+      await createModul({ name: name.trim(), credits: Number(credits), studiengang_ids: studiengangIds });
       setName("");
       setCredits("");
+      setStudiengangIds([]);
       await load();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Fehler beim Anlegen");
@@ -67,9 +64,6 @@ export default function ModulePage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-text-primary">Module</h1>
-        <p className="mt-1 text-text-secondary">
-          Alle Module über deine Studiengänge hinweg – inklusive Noten und Klausurzulassung.
-        </p>
       </div>
 
       {error && (
@@ -80,42 +74,42 @@ export default function ModulePage() {
 
       <Card>
         <h2 className="mb-3 font-semibold text-text-primary">Neues Modul</h2>
-        <form onSubmit={handleCreate} className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr_1.5fr_auto]">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Name, z. B. Analysis I"
-            required
-            className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
-          />
-          <input
-            value={credits}
-            onChange={(e) => setCredits(e.target.value)}
-            placeholder="Credits"
-            type="number"
-            min="0.5"
-            step="0.5"
-            required
-            className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
-          />
-          <select
-            value={studiengangId}
-            onChange={(e) => setStudiengangId(e.target.value)}
-            className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
-          >
-            <option value={SONSTIGES}>Sonstiges</option>
-            {studiengaenge.map((sg) => (
-              <option key={sg.id} value={sg.id}>
-                {sg.name}
-              </option>
-            ))}
-          </select>
-          <button
-            type="submit"
-            className="rounded-lg bg-series-1 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-          >
-            Anlegen
-          </button>
+        <form onSubmit={handleCreate} className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr_auto]">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Name, z. B. Analysis I"
+              required
+              className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
+            />
+            <input
+              value={credits}
+              onChange={(e) => setCredits(e.target.value)}
+              placeholder="Credits"
+              type="number"
+              min="0.5"
+              step="0.5"
+              required
+              className="rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
+            />
+            <button
+              type="submit"
+              className="rounded-lg bg-series-1 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+            >
+              Anlegen
+            </button>
+          </div>
+          <div>
+            <p className="mb-2 text-sm text-text-secondary">
+              Studiengänge (mehrere möglich, keiner = Sonstiges):
+            </p>
+            <StudiengangMultiSelect
+              studiengaenge={studiengaenge}
+              selectedIds={studiengangIds}
+              onChange={setStudiengangIds}
+            />
+          </div>
         </form>
       </Card>
 
@@ -144,7 +138,7 @@ export default function ModulePage() {
                 <div>
                   <div className="font-medium text-text-primary">{m.name}</div>
                   <div className="mt-0.5 text-sm text-text-muted">
-                    {studiengangName(m.studiengang_id)} · {formatCredits(m.credits)}
+                    {studiengangNames(m)} · {formatCredits(m.credits)}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
