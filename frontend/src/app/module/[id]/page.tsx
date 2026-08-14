@@ -1,0 +1,197 @@
+"use client";
+
+import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import {
+  ApiError,
+  deleteModul,
+  getModul,
+  listStudiengaenge,
+  updateModul,
+} from "@/lib/api";
+import { Card } from "@/components/Card";
+import { GradeBadge } from "@/components/GradeBadge";
+import { GradeSlots } from "@/components/GradeSlots";
+import { SeriesEditor } from "@/components/SeriesEditor";
+import { formatCredits } from "@/lib/format";
+import type { Modul, Studiengang } from "@/lib/types";
+
+export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
+  const { id } = use(props.params);
+  const modulId = Number(id);
+  const router = useRouter();
+
+  const [modul, setModul] = useState<Modul | null>(null);
+  const [studiengaenge, setStudiengaenge] = useState<Studiengang[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [editingHeader, setEditingHeader] = useState(false);
+  const [name, setName] = useState("");
+  const [credits, setCredits] = useState("");
+  const [studiengangId, setStudiengangId] = useState("sonstiges");
+
+  useEffect(() => {
+    Promise.all([getModul(modulId), listStudiengaenge()])
+      .then(([m, sgs]) => {
+        setModul(m);
+        setStudiengaenge(sgs);
+        setName(m.name);
+        setCredits(String(m.credits));
+        setStudiengangId(m.studiengang_id === null ? "sonstiges" : String(m.studiengang_id));
+      })
+      .catch((e) => setError(e instanceof ApiError ? e.message : "Fehler beim Laden"));
+  }, [modulId]);
+
+  async function handleSaveHeader() {
+    setError(null);
+    try {
+      const updated = await updateModul(modulId, {
+        name: name.trim(),
+        credits: Number(credits),
+        studiengang_id: studiengangId === "sonstiges" ? null : Number(studiengangId),
+      });
+      setModul(updated);
+      setEditingHeader(false);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Fehler beim Speichern");
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirm(`Modul "${modul?.name}" wirklich löschen?`)) return;
+    try {
+      await deleteModul(modulId);
+      router.push("/module");
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Fehler beim Löschen");
+    }
+  }
+
+  if (error && !modul) {
+    return (
+      <Card className="border-status-critical/30 bg-status-critical/5 text-status-critical">
+        {error}
+      </Card>
+    );
+  }
+
+  if (!modul) {
+    return <p className="text-text-secondary">Lade Modul…</p>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <Link href="/module" className="text-sm text-text-secondary hover:underline">
+        ← Zurück zu Modulen
+      </Link>
+
+      {error && (
+        <Card className="border-status-critical/30 bg-status-critical/5 text-sm text-status-critical">
+          {error}
+        </Card>
+      )}
+
+      <Card>
+        {editingHeader ? (
+          <div className="space-y-3">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-lg font-semibold outline-none focus:border-series-1"
+            />
+            <div className="flex gap-2">
+              <input
+                value={credits}
+                onChange={(e) => setCredits(e.target.value)}
+                type="number"
+                min="0.5"
+                step="0.5"
+                className="w-32 rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
+              />
+              <select
+                value={studiengangId}
+                onChange={(e) => setStudiengangId(e.target.value)}
+                className="flex-1 rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
+              >
+                <option value="sonstiges">Sonstiges</option>
+                {studiengaenge.map((sg) => (
+                  <option key={sg.id} value={sg.id}>
+                    {sg.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleSaveHeader}
+                className="rounded-lg bg-series-1 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+              >
+                Speichern
+              </button>
+              <button
+                onClick={() => setEditingHeader(false)}
+                className="rounded-lg px-4 py-2 text-sm text-text-secondary hover:bg-text-muted/10"
+              >
+                Abbrechen
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold text-text-primary">{modul.name}</h1>
+              <p className="mt-1 text-text-secondary">
+                {studiengaenge.find((s) => s.id === modul.studiengang_id)?.name ?? "Sonstiges"} ·{" "}
+                {formatCredits(modul.credits)}
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <GradeBadge grade={modul.final_grade} />
+              <button
+                onClick={() => setEditingHeader(true)}
+                className="rounded-lg px-3 py-1.5 text-sm text-text-secondary hover:bg-text-muted/10"
+              >
+                Bearbeiten
+              </button>
+              <button
+                onClick={handleDelete}
+                className="rounded-lg px-3 py-1.5 text-sm text-status-critical hover:bg-status-critical/10"
+              >
+                Löschen
+              </button>
+            </div>
+          </div>
+        )}
+
+        {modul.series.length > 0 && (
+          <div
+            className={`mt-4 rounded-lg px-3 py-2 text-sm ${
+              modul.zulassung
+                ? "bg-status-good/10 text-status-good"
+                : "bg-status-critical/10 text-status-critical"
+            }`}
+          >
+            {modul.zulassung ? "✓ Klausurzulassung erreicht" : "⚠ Klausurzulassung noch nicht erreicht"}
+          </div>
+        )}
+      </Card>
+
+      <Card>
+        <h2 className="mb-3 font-semibold text-text-primary">Noten</h2>
+        <p className="mb-3 text-sm text-text-muted">
+          Bis zu drei Versuche – die beste Note zählt. Note oder „bestanden“ / „nicht bestanden“ möglich.
+        </p>
+        <GradeSlots modulId={modul.id} attempts={modul.grade_attempts} onModulUpdate={setModul} />
+      </Card>
+
+      <Card>
+        <h2 className="mb-3 font-semibold text-text-primary">Übungsserien &amp; Abgaben</h2>
+        <p className="mb-3 text-sm text-text-muted">
+          Wöchentliche Abgaben je Serie (z. B. Rechenblatt, Programmierblatt). Standardschwelle für die
+          Klausurzulassung: 50 %.
+        </p>
+        <SeriesEditor modulId={modul.id} series={modul.series} onModulUpdate={setModul} />
+      </Card>
+    </div>
+  );
+}
