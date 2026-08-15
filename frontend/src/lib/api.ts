@@ -67,6 +67,11 @@ export const updateMe = (data: {
   email?: string;
   new_password?: string;
 }) => request<User>("/api/auth/me", { method: "PATCH", body: JSON.stringify(data) });
+export const deleteMe = (currentPassword: string) =>
+  request<void>("/api/auth/me", {
+    method: "DELETE",
+    body: JSON.stringify({ current_password: currentPassword }),
+  });
 
 // Studiengänge
 export const listStudiengaenge = () => request<Studiengang[]>("/api/studiengaenge");

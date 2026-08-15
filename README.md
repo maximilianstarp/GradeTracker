@@ -205,6 +205,7 @@ user's data.
 | `POST /auth/login` | Log in (`email`, `password`) → token |
 | `GET /auth/me` | Get the current user |
 | `PATCH /auth/me` | Change name/email/password (`current_password` required) |
+| `DELETE /auth/me` | Permanently delete the account and all owned data (`current_password` required) |
 | `GET/POST /studiengaenge` | List / create degree programs |
 | `PATCH/DELETE /studiengaenge/<id>` | Rename / delete |
 | `GET/POST /module` | List modules (optional `?studiengang_id=`) / create (`studiengang_ids: []`) |

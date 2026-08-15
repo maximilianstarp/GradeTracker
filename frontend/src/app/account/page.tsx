@@ -1,12 +1,14 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { ApiError, updateMe } from "@/lib/api";
+import { ApiError, deleteMe, updateMe } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { Card } from "@/components/Card";
 
 export default function AccountPage() {
-  const { user, setUser } = useAuth();
+  const { user, setUser, logout } = useAuth();
+  const confirm = useConfirm();
   // AuthGate only renders this page once `user` is loaded, so it's safe to
   // seed form state from it directly instead of syncing via an effect.
   const [name, setName] = useState(user?.name ?? "");
@@ -17,6 +19,10 @@ export default function AccountPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -45,6 +51,29 @@ export default function AccountPage() {
       setError(e instanceof ApiError ? e.message : "Failed to save");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleDelete(e: FormEvent) {
+    e.preventDefault();
+    setDeleteError(null);
+
+    const confirmed = await confirm({
+      title: "Delete account permanently",
+      message:
+        "This deletes your account and all your Studiengänge, Module and grades. This cannot be undone.",
+      confirmLabel: "Delete permanently",
+      danger: true,
+    });
+    if (!confirmed) return;
+
+    setDeleting(true);
+    try {
+      await deleteMe(deletePassword);
+      logout();
+    } catch (e) {
+      setDeleteError(e instanceof ApiError ? e.message : "Failed to delete account");
+      setDeleting(false);
     }
   }
 
@@ -120,6 +149,33 @@ export default function AccountPage() {
             className="rounded-lg bg-series-1 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
           >
             Save
+          </button>
+        </form>
+      </Card>
+
+      <Card className="border-status-critical/40">
+        <h2 className="text-base font-semibold text-status-critical">Danger zone</h2>
+        <p className="mt-1 text-sm text-text-secondary">
+          Permanently delete your account and all associated data (Studiengänge, Module,
+          Kombi-Module, grades and submissions). This action cannot be undone.
+        </p>
+        {deleteError && <p className="mt-3 text-sm text-status-critical">{deleteError}</p>}
+        <form onSubmit={handleDelete} className="mt-4 space-y-3">
+          <Field label="Current password">
+            <input
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              type="password"
+              required
+              className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-status-critical"
+            />
+          </Field>
+          <button
+            type="submit"
+            disabled={deleting}
+            className="rounded-lg bg-status-critical px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
+          >
+            Delete account permanently
           </button>
         </form>
       </Card>

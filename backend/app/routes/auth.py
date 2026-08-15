@@ -95,3 +95,22 @@ def update_me():
 
     db.session.commit()
     return jsonify(user.to_dict())
+
+
+@bp.delete("/me")
+@login_required
+def delete_me():
+    user = g.current_user
+    data = request.get_json(silent=True) or {}
+
+    current_password = data.get("current_password") or ""
+    if not user.check_password(current_password):
+        return error("Current password is incorrect", 401)
+
+    # User.id is the FK root for Studiengang/Modul/KombiModul (each
+    # ondelete="CASCADE"), which in turn cascade down to grade attempts,
+    # submission series and submissions - deleting the user is enough.
+    db.session.delete(user)
+    db.session.commit()
+
+    return "", 204

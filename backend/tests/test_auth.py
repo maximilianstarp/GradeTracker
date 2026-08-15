@@ -92,3 +92,47 @@ class TestMe:
             headers=auth_header,
         )
         assert resp.status_code == 409
+
+
+class TestDeleteMe:
+    def test_delete_requires_auth(self, client):
+        assert client.delete("/api/auth/me").status_code == 401
+
+    def test_delete_requires_correct_password(self, client, auth_header):
+        resp = client.delete(
+            "/api/auth/me", json={"current_password": "wrongpass"}, headers=auth_header
+        )
+        assert resp.status_code == 401
+
+    def test_delete_removes_account(self, client, auth_header):
+        resp = client.delete(
+            "/api/auth/me", json={"current_password": "testpass123"}, headers=auth_header
+        )
+        assert resp.status_code == 204
+
+        assert client.get("/api/auth/me", headers=auth_header).status_code == 401
+        assert (
+            client.post(
+                "/api/auth/login",
+                json={"email": "test@example.com", "password": "testpass123"},
+            ).status_code
+            == 401
+        )
+
+    def test_delete_cascades_owned_data(self, client, auth_header):
+        modul = client.post(
+            "/api/module",
+            json={"name": "Analysis", "credits": 6, "studiengang_ids": []},
+            headers=auth_header,
+        ).get_json()
+
+        client.delete("/api/auth/me", json={"current_password": "testpass123"}, headers=auth_header)
+
+        # A fresh account re-using the same email must not see leftover rows.
+        register(client, email="test@example.com", password="testpass123")
+        login = client.post(
+            "/api/auth/login", json={"email": "test@example.com", "password": "testpass123"}
+        ).get_json()
+        new_header = {"Authorization": f"Bearer {login['token']}"}
+        resp = client.get(f"/api/module/{modul['id']}", headers=new_header)
+        assert resp.status_code == 404
