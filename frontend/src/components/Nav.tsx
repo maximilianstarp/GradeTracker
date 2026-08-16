@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const LINKS = [
   { href: "/", label: "Dashboard" },
@@ -38,6 +39,7 @@ export function Nav() {
           })}
         </nav>
         <div className="flex items-center gap-1 text-sm">
+          <ThemeToggle />
           <Link
             href="/account"
             className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${

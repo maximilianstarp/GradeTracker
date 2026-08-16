@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/*
+ * Theme tokens. Light is the default palette on :root; `.dark` on <html>
+ * overrides it. The inline script in layout.tsx sets that class before
+ * paint from localStorage (key "theme"), falling back to the OS
+ * preference below when the user never explicitly chose a theme, so the
+ * media query only matters pre-hydration / with JS disabled.
+ */
 :root {
   color-scheme: light;
 
@@ -24,8 +31,32 @@
   --status-critical: #d03b3b;
 }
 
+:root.dark {
+  color-scheme: dark;
+
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --surface-raised: #212120;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --border: rgba(255, 255, 255, 0.1);
+  --gridline: #2c2c2a;
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-7: #9085e9;
+
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #e66767;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light):not(.dark) {
     color-scheme: dark;
 
     --page: #0d0d0d;
