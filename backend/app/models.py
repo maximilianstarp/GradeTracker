@@ -74,7 +74,7 @@ class Studiengang(db.Model):
     __tablename__ = "studiengang"
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True)
     name = db.Column(db.String(120), nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow)
 
@@ -101,7 +101,7 @@ class Modul(db.Model):
     __tablename__ = "modul"
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True)
     name = db.Column(db.String(200), nullable=False)
     credits = db.Column(db.Float, nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow)
@@ -152,7 +152,7 @@ class GradeAttempt(db.Model):
     __tablename__ = "grade_attempt"
 
     id = db.Column(db.Integer, primary_key=True)
-    modul_id = db.Column(db.Integer, db.ForeignKey("modul.id", ondelete="CASCADE"), nullable=False)
+    modul_id = db.Column(db.Integer, db.ForeignKey("modul.id", ondelete="CASCADE"), nullable=False, index=True)
     slot = db.Column(db.Integer, nullable=False, default=1)  # 1..3
     kind = db.Column(db.String(10), nullable=False)  # "numeric" | "pass" | "fail"
     value = db.Column(db.Float, nullable=True)  # only for kind == "numeric"
@@ -173,7 +173,7 @@ class SubmissionSeries(db.Model):
     __tablename__ = "submission_series"
 
     id = db.Column(db.Integer, primary_key=True)
-    modul_id = db.Column(db.Integer, db.ForeignKey("modul.id", ondelete="CASCADE"), nullable=False)
+    modul_id = db.Column(db.Integer, db.ForeignKey("modul.id", ondelete="CASCADE"), nullable=False, index=True)
     name = db.Column(db.String(120), nullable=False)
     threshold_percent = db.Column(db.Float, nullable=False, default=50.0)
     total_weeks = db.Column(db.Integer, nullable=True)
@@ -214,7 +214,7 @@ class Submission(db.Model):
     __tablename__ = "submission"
 
     id = db.Column(db.Integer, primary_key=True)
-    series_id = db.Column(db.Integer, db.ForeignKey("submission_series.id", ondelete="CASCADE"), nullable=False)
+    series_id = db.Column(db.Integer, db.ForeignKey("submission_series.id", ondelete="CASCADE"), nullable=False, index=True)
     week_number = db.Column(db.Integer, nullable=False)
     points_achieved = db.Column(db.Float, nullable=False, default=0)
     points_max = db.Column(db.Float, nullable=False)
@@ -239,10 +239,12 @@ class KombiModul(db.Model):
     __tablename__ = "kombi_modul"
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True)
     name = db.Column(db.String(200), nullable=False)
     credits = db.Column(db.Float, nullable=False)
-    studiengang_id = db.Column(db.Integer, db.ForeignKey("studiengang.id", ondelete="CASCADE"), nullable=False)
+    studiengang_id = db.Column(
+        db.Integer, db.ForeignKey("studiengang.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     created_at = db.Column(db.DateTime, default=utcnow)
 
     studiengang = db.relationship("Studiengang", back_populates="kombi_module")

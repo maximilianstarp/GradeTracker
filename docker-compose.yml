@@ -1,13 +1,31 @@
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: grade-tracker-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-grade_tracker}
+      POSTGRES_USER: ${POSTGRES_USER:-grade_tracker}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-grade_tracker}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-grade_tracker} -d ${POSTGRES_DB:-grade_tracker}"]
+      interval: 10s
+      timeout: 3s
+      start_period: 5s
+      retries: 5
+
   backend:
     build: ./backend
     container_name: grade-tracker-backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: sqlite:////app/instance/grades.db
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-grade_tracker}:${POSTGRES_PASSWORD:-grade_tracker}@db:5432/${POSTGRES_DB:-grade_tracker}
       SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me-in-production}
-    volumes:
-      - backend-data:/app/instance
+    depends_on:
+      db:
+        condition: service_healthy
     ports:
       - "5001:5000"
     healthcheck:
@@ -32,4 +50,4 @@ services:
       - backend
 
 volumes:
-  backend-data:
+  db-data:

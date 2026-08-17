@@ -6,7 +6,13 @@ from app.models import db as _db
 
 @pytest.fixture()
 def app():
+    # Tests use an isolated in-memory SQLite database per test, built straight
+    # from the current models via create_all() - fast and self-contained.
+    # Real deployments (Postgres) get their schema from the Alembic
+    # migrations in backend/migrations/ instead (see `flask db upgrade`).
     app = create_app({"SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:", "TESTING": True})
+    with app.app_context():
+        _db.create_all()
     yield app
     with app.app_context():
         _db.drop_all()

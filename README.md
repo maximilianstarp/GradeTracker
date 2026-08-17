@@ -59,7 +59,7 @@ flowchart LR
     end
     subgraph Docker Compose
         UI -->|REST/JSON| API[Flask API]
-        API --> DB[(SQLite<br/>Docker Volume)]
+        API --> DB[(PostgreSQL<br/>Docker Volume)]
     end
 ```
 
@@ -135,7 +135,7 @@ table, the same principle used for a combined module's source modules).
 
 | Area     | Technology |
 |----------|------------|
-| Backend  | Flask 3, Flask-SQLAlchemy, SQLite, pytest, gunicorn |
+| Backend  | Flask 3, Flask-SQLAlchemy, Flask-Migrate (Alembic), PostgreSQL, pytest, gunicorn |
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4 |
 | Infra    | Docker, Docker Compose |
 
@@ -168,18 +168,39 @@ docker compose exec backend python seed.py
 
 ### Local development without Docker
 
+Needs a running Postgres reachable via `DATABASE_URL` (e.g. `docker compose up db`
+to just run the database, or a local install).
+
 ```bash
 # Backend
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-FLASK_APP=wsgi.py flask run --port 5001
+export DATABASE_URL=postgresql+psycopg://grade_tracker:grade_tracker@localhost:5432/grade_tracker
+export FLASK_APP=wsgi.py
+flask db upgrade   # creates/updates the schema
+flask run --port 5001
 
 # Frontend (separate terminal)
 cd frontend
 npm install
 NEXT_PUBLIC_API_URL=http://localhost:5001 npm run dev
 ```
+
+### Schema changes
+
+The schema is managed with Flask-Migrate/Alembic
+(`backend/migrations/`) instead of `db.create_all()`. After changing a model
+in `backend/app/models.py`, generate and review a migration, then apply it:
+
+```bash
+cd backend
+flask db migrate -m "describe the change"
+flask db upgrade
+```
+
+Migrations run automatically on container start (see
+[`backend/entrypoint.sh`](backend/entrypoint.sh)).
 
 ### Tests
 
@@ -230,6 +251,8 @@ grade_tracker/
 │   │   ├── auth.py          # bearer token issuing/verification, login_required
 │   │   ├── models.py        # SQLAlchemy models
 │   │   └── routes/          # Flask blueprints (REST endpoints, incl. auth.py)
+│   ├── migrations/            # Alembic schema migrations (Flask-Migrate)
+│   ├── scripts/                # one-off maintenance scripts
 │   ├── tests/                # pytest
 │   └── seed.py                # example data incl. demo user
 └── frontend/
