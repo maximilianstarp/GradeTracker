@@ -7,6 +7,10 @@ export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme | null>(null);
 
   useEffect(() => {
+    // Browser-only theme source (localStorage / matchMedia): the initial
+    // render must match the server's markup, which has neither, so this can
+    // only be synced client-side after mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTheme(getStoredTheme() ?? getSystemTheme());
   }, []);
 

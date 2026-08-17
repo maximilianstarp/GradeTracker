@@ -8,15 +8,15 @@ const STORAGE_KEY = "theme";
  * wrong theme, no hydration mismatch). Do not import anything into it. */
 export function themeInitScript() {
   try {
-    var stored = localStorage.getItem("theme");
-    var theme =
+    const stored = localStorage.getItem("theme");
+    const theme =
       stored === "light" || stored === "dark"
         ? stored
         : window.matchMedia("(prefers-color-scheme: dark)").matches
           ? "dark"
           : "light";
     document.documentElement.classList.add(theme);
-  } catch (e) {
+  } catch {
     /* ignore, falls back to the CSS prefers-color-scheme media query */
   }
 }
