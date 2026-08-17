@@ -227,7 +227,7 @@ class TestUserIsolation:
     def _other_user_header(self, client):
         resp = client.post(
             "/api/auth/register",
-            json={"name": "Other User", "email": "other@example.com", "password": "otherpass123"},
+            json={"username": "otheruser", "email": "other@example.com", "password": "otherpass123"},
         )
         return {"Authorization": f"Bearer {resp.get_json()['token']}"}
 

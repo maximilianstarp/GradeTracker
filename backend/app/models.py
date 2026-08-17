@@ -55,10 +55,24 @@ class User(db.Model):
     __tablename__ = "user"
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120), nullable=False)
+    username = db.Column(db.String(30), nullable=False, unique=True)
     email = db.Column(db.String(255), nullable=False, unique=True)
+    email_verified = db.Column(db.Boolean, nullable=False, default=False)
+    # New address awaiting confirmation via a "change_email" code - the old
+    # `email` stays authoritative (and is what login/notifications use)
+    # until that code is verified.
+    pending_email = db.Column(db.String(255), nullable=True)
     password_hash = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow)
+
+    # A single active verification/reset code (email verification, email
+    # change, or password reset - see app/codes.py). One slot is enough
+    # since a new request simply replaces whatever was pending.
+    code_hash = db.Column(db.String(255), nullable=True)
+    code_purpose = db.Column(db.String(20), nullable=True)
+    code_expires_at = db.Column(db.DateTime, nullable=True)
+    code_attempts = db.Column(db.Integer, nullable=False, default=0)
+    code_sent_at = db.Column(db.DateTime, nullable=True)
 
     def set_password(self, password: str) -> None:
         self.password_hash = generate_password_hash(password)
@@ -67,7 +81,13 @@ class User(db.Model):
         return check_password_hash(self.password_hash, password)
 
     def to_dict(self) -> dict:
-        return {"id": self.id, "name": self.name, "email": self.email}
+        return {
+            "id": self.id,
+            "username": self.username,
+            "email": self.email,
+            "email_verified": self.email_verified,
+            "pending_email": self.pending_email,
+        }
 
 
 class Studiengang(db.Model):

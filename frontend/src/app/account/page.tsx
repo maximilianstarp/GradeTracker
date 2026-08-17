@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { ApiError, deleteMe, updateMe } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
@@ -11,7 +12,7 @@ export default function AccountPage() {
   const confirm = useConfirm();
   // AuthGate only renders this page once `user` is loaded, so it's safe to
   // seed form state from it directly instead of syncing via an effect.
-  const [name, setName] = useState(user?.name ?? "");
+  const [username, setUsername] = useState(user?.username ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [newPassword, setNewPassword] = useState("");
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
@@ -38,11 +39,12 @@ export default function AccountPage() {
     try {
       const updated = await updateMe({
         current_password: currentPassword,
-        name,
+        username,
         email,
         ...(newPassword ? { new_password: newPassword } : {}),
       });
       setUser(updated);
+      setEmail(updated.email);
       setCurrentPassword("");
       setNewPassword("");
       setNewPasswordConfirm("");
@@ -87,10 +89,12 @@ export default function AccountPage() {
         {error && <p className="mb-3 text-sm text-status-critical">{error}</p>}
         {success && <p className="mb-3 text-sm text-status-good">Changes saved.</p>}
         <form onSubmit={handleSubmit} className="space-y-4">
-          <Field label="Name">
+          <Field label="Username">
             <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              pattern="[a-zA-Z0-9_.-]{3,30}"
+              title="3-30 characters: letters, numbers, '.', '_' or '-'"
               required
               className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
             />
@@ -103,6 +107,28 @@ export default function AccountPage() {
               required
               className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
             />
+            {!user.email_verified && !user.pending_email && (
+              <p className="mt-1.5 text-xs text-status-warning">
+                Not verified yet.{" "}
+                <Link href="/verify-email" className="font-medium underline">
+                  Verify now
+                </Link>
+              </p>
+            )}
+            {user.pending_email && (
+              <p className="mt-1.5 text-xs text-text-secondary">
+                Verification pending for <span className="font-medium">{user.pending_email}</span>{" "}
+                - your current address stays active until you{" "}
+                <Link href="/verify-email" className="font-medium text-series-1 underline">
+                  confirm it
+                </Link>
+                . Save this form with your current email to cancel the change.
+              </p>
+            )}
+            <p className="mt-1.5 text-xs text-text-secondary">
+              Changing your email requires confirming a code sent to the new address; nothing
+              changes until then.
+            </p>
           </Field>
 
           <div className="border-t border-border pt-4">

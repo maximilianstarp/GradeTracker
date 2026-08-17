@@ -40,6 +40,15 @@ export function Nav() {
         </nav>
         <div className="flex items-center gap-1 text-sm">
           <ThemeToggle />
+          {user && !user.email_verified && (
+            <Link
+              href="/verify-email"
+              className="rounded-lg bg-status-warning/10 px-3 py-1.5 font-medium text-status-warning hover:bg-status-warning/20"
+              title="Your email isn't verified yet"
+            >
+              Verify email
+            </Link>
+          )}
           <Link
             href="/account"
             className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${
@@ -48,7 +57,7 @@ export function Nav() {
                 : "text-text-secondary hover:bg-text-muted/10 hover:text-text-primary"
             }`}
           >
-            {user?.name}
+            {user?.username}
           </Link>
           <button
             onClick={logout}

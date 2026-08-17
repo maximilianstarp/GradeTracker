@@ -19,7 +19,7 @@ def run():
             print("Database already has data - skipping seed.")
             return
 
-        user = User(name="Demo User", email=DEMO_EMAIL)
+        user = User(username="demo_user", email=DEMO_EMAIL, email_verified=True)
         user.set_password(DEMO_PASSWORD)
         db.session.add(user)
         db.session.flush()

@@ -25,9 +25,16 @@ of rebuilding it in a spreadsheet every semester.
 
 ## Features
 
-- **Multi-user** – sign up with name/email/password (no email verification
-  required), log in/out, edit your profile. All data is strictly isolated
-  per user.
+- **Multi-user** – sign up with username/email/password, log in/out. All
+  data is strictly isolated per user.
+- **Email verification** – a code-based flow verifies the address on
+  sign-up and on every email change; the old address stays active until a
+  changed one is confirmed. Codes are emailed via SMTP if configured, or
+  logged by the backend otherwise (see [Setup](#setup)).
+- **Account settings** – change username, email (re-verified) and password
+  at any time, or delete the account and all its data permanently.
+- **Password reset** – forgot your password? Request a code by email and
+  set a new one, no login required.
 - **Manage degree programs** – add, rename and delete as many programs as
   you like (e.g. Mathematics, Physics, Economics). Modules without an
   assignment automatically fall under "Other".
@@ -86,8 +93,10 @@ erDiagram
 
     USER {
         int id
-        string name
+        string username "unique"
         string email "unique"
+        bool email_verified
+        string pending_email "awaiting verification"
         string password_hash
     }
     PROGRAM {
@@ -158,7 +167,13 @@ docker compose up --build
 > For anything beyond local use, also set `SECRET_KEY` (signs login tokens)
 > to your own random value in a `.env` file — see `.env.example`.
 
-Sign up via the web UI first (`/signup`), then log in. Optionally, seed
+Sign up via the web UI first (`/signup`), then log in. Without SMTP
+configured, verification/reset codes aren't actually emailed - they're
+logged by the backend instead (`docker compose logs backend`), which is
+fine for local use. Set `SMTP_HOST` and friends in `.env` (see
+`.env.example`) to send real emails.
+
+Optionally, seed
 some example data (Calculus, Linear Algebra, the combined module "Math for
 Physicists", …) under a demo login:
 
@@ -223,10 +238,15 @@ user's data.
 
 | Method & Path | Purpose |
 |---|---|
-| `POST /auth/register` | Sign up (`name`, `email`, `password`) → token |
-| `POST /auth/login` | Log in (`email`, `password`) → token |
+| `POST /auth/register` | Sign up (`username`, `email`, `password`) → token; emails a verification code |
+| `POST /auth/login` | Log in (`email`, `password`) → token; works whether or not the email is verified yet |
 | `GET /auth/me` | Get the current user |
-| `PATCH /auth/me` | Change name/email/password (`current_password` required) |
+| `PATCH /auth/me` | Change username / email / password (`current_password` required). A new email is held as `pending_email` and re-verified before it takes effect |
+| `POST /auth/verify-email` | Confirm the initial signup email with its code |
+| `POST /auth/verify-email-change` | Confirm a pending email change with its code |
+| `POST /auth/resend-code` | Re-send whichever verification code is currently pending (rate-limited) |
+| `POST /auth/forgot-password` | Request a password-reset code by email |
+| `POST /auth/reset-password` | Set a new password using a reset code (`email`, `code`, `new_password`) |
 | `DELETE /auth/me` | Permanently delete the account and all owned data (`current_password` required) |
 | `GET/POST /studiengaenge` | List / create degree programs |
 | `PATCH/DELETE /studiengaenge/<id>` | Rename / delete |
@@ -250,6 +270,8 @@ grade_tracker/
 │   ├── app/
 │   │   ├── grading.py       # pure calculation logic (average, admission, combined-module averaging)
 │   │   ├── auth.py          # bearer token issuing/verification, login_required
+│   │   ├── codes.py         # email verification / password-reset code generation & checks
+│   │   ├── email.py         # outbound email (SMTP, or logged when unconfigured)
 │   │   ├── models.py        # SQLAlchemy models
 │   │   └── routes/          # Flask blueprints (REST endpoints, incl. auth.py)
 │   ├── migrations/            # Alembic schema migrations (Flask-Migrate)
@@ -258,7 +280,7 @@ grade_tracker/
 │   └── seed.py                # example data incl. demo user
 └── frontend/
     └── src/
-        ├── app/                # Next.js App Router pages (incl. login/signup/account)
+        ├── app/                # Next.js App Router pages (incl. login/signup/account/verify-email/forgot-password/reset-password)
         ├── components/         # UI building blocks (ProgressBar, GradeBadge, ConfirmDialog, …)
         └── lib/                # API client, types, AuthContext
 ```

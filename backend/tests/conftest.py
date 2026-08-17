@@ -24,11 +24,24 @@ def client(app):
 
 
 @pytest.fixture()
-def auth_header(client):
+def sent_codes(monkeypatch):
+    """Captures verification/reset codes instead of emailing them, so tests
+    can read the plaintext code straight off this list."""
+    codes = []
+
+    def fake_send(to, purpose, code):
+        codes.append({"to": to, "purpose": purpose, "code": code})
+
+    monkeypatch.setattr("app.routes.auth.send_verification_code", fake_send)
+    return codes
+
+
+@pytest.fixture()
+def auth_header(client, sent_codes):
     """Registers a fresh user and returns an Authorization header dict for it."""
     resp = client.post(
         "/api/auth/register",
-        json={"name": "Test User", "email": "test@example.com", "password": "testpass123"},
+        json={"username": "testuser", "email": "test@example.com", "password": "testpass123"},
     )
     token = resp.get_json()["token"]
     return {"Authorization": f"Bearer {token}"}

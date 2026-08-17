@@ -50,7 +50,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 // Auth
-export const registerUser = (data: { name: string; email: string; password: string }) =>
+export const registerUser = (data: { username: string; email: string; password: string }) =>
   request<{ token: string; user: User }>("/api/auth/register", {
     method: "POST",
     body: JSON.stringify(data),
@@ -63,7 +63,7 @@ export const loginUser = (data: { email: string; password: string }) =>
 export const getMe = () => request<User>("/api/auth/me");
 export const updateMe = (data: {
   current_password: string;
-  name?: string;
+  username?: string;
   email?: string;
   new_password?: string;
 }) => request<User>("/api/auth/me", { method: "PATCH", body: JSON.stringify(data) });
@@ -71,6 +71,24 @@ export const deleteMe = (currentPassword: string) =>
   request<void>("/api/auth/me", {
     method: "DELETE",
     body: JSON.stringify({ current_password: currentPassword }),
+  });
+export const verifyEmail = (code: string) =>
+  request<User>("/api/auth/verify-email", { method: "POST", body: JSON.stringify({ code }) });
+export const verifyEmailChange = (code: string) =>
+  request<User>("/api/auth/verify-email-change", {
+    method: "POST",
+    body: JSON.stringify({ code }),
+  });
+export const resendCode = () => request<{ message: string }>("/api/auth/resend-code", { method: "POST" });
+export const forgotPassword = (email: string) =>
+  request<{ message: string }>("/api/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+export const resetPassword = (data: { email: string; code: string; new_password: string }) =>
+  request<{ message: string }>("/api/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify(data),
   });
 
 // Studiengänge

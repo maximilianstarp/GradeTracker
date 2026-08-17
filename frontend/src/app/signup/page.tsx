@@ -10,7 +10,7 @@ import { Card } from "@/components/Card";
 export default function SignupPage() {
   const { register } = useAuth();
   const router = useRouter();
-  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +21,7 @@ export default function SignupPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await register(name, email, password);
+      await register(username, email, password);
       router.replace("/");
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Sign-up failed");
@@ -40,9 +40,11 @@ export default function SignupPage() {
         {error && <p className="mb-3 text-sm text-status-critical">{error}</p>}
         <form onSubmit={handleSubmit} className="space-y-3">
           <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Name"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Username"
+            pattern="[a-zA-Z0-9_.-]{3,30}"
+            title="3-30 characters: letters, numbers, '.', '_' or '-'"
             required
             className="w-full rounded-lg border border-border bg-surface-raised px-3 py-2 text-sm outline-none focus:border-series-1"
           />

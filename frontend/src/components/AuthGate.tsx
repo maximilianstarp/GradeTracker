@@ -5,7 +5,7 @@ import { ReactNode, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { Nav } from "@/components/Nav";
 
-const PUBLIC_PATHS = ["/login", "/signup"];
+const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/reset-password"];
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
