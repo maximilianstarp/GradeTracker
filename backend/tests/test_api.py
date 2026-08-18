@@ -283,6 +283,50 @@ class TestModule:
 
 
 class TestKombiModul:
+    def test_graded_combined_module_averages_only_the_graded_sources(self, client, auth_header):
+        """Regression test: a graded combined module mixing a graded and a
+        not-graded (but passed) source module used to show as "open"
+        forever, since the not-graded source never gets a numeric grade.
+        It should instead average just the graded source(s)."""
+        mathe = create_studiengang(client, auth_header, "Mathematik").get_json()
+        physik = create_studiengang(client, auth_header, "Physik").get_json()
+        analysis = create_modul(client, auth_header, [mathe["id"]], "Analysis I", 9).get_json()
+        resp = client.post(
+            "/api/module",
+            json={
+                "name": "Spanisch A1",
+                "credits": 3,
+                "studiengang_ids": [mathe["id"]],
+                "graded": False,
+            },
+            headers=auth_header,
+        )
+        language_course = resp.get_json()
+
+        client.post(
+            f"/api/module/{analysis['id']}/grades",
+            json={"slot": 1, "kind": "numeric", "value": 1.7},
+            headers=auth_header,
+        )
+        client.post(
+            f"/api/module/{language_course['id']}/grades",
+            json={"slot": 1, "kind": "pass"},
+            headers=auth_header,
+        )
+
+        resp = client.post(
+            "/api/kombimodule",
+            json={
+                "name": "Kombi",
+                "credits": 12,
+                "studiengang_id": physik["id"],
+                "source_module_ids": [analysis["id"], language_course["id"]],
+                "graded": True,
+            },
+            headers=auth_header,
+        )
+        assert resp.get_json()["final_grade"] == {"status": "numeric", "value": 1.7}
+
     def test_combined_grade_is_average_of_sources(self, client, auth_header):
         mathe = create_studiengang(client, auth_header, "Mathematik").get_json()
         physik = create_studiengang(client, auth_header, "Physik").get_json()

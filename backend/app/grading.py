@@ -186,11 +186,16 @@ def kombimodul_grade(source_final_grades: Sequence[FinalGrade], graded: bool = T
     """A Kombi-Modul's grade combines its source modules' final grades.
 
     Graded ("benotet", the default): the arithmetic mean of the source
-    modules' numeric grades. If any source module lacks a numeric grade,
-    the combined grade is not yet determined ("none"). A single source
-    module is allowed - the "average" of one grade is just that grade,
-    which is exactly right for re-crediting one module under different
-    credits via its own combined module.
+    modules' numeric grades. A source module that isn't itself graded (or
+    is graded but was simply recorded as pass/fail) doesn't block this -
+    it's dropped from the average once it's passed, exactly like it would
+    be dropped from a program's own credit-weighted average. It only blocks
+    the combined grade ("none") while still open, and turns the whole
+    combined module "failed" if it fails outright - same as any numeric
+    source scoring worse than 4.0. A single source module is allowed - the
+    "average" of one grade is just that grade, which is exactly right for
+    re-crediting one module under different credits via its own combined
+    module.
 
     Ungraded ("unbenotet"): pass/fail instead of a numeric average - some
     programs list a combined module (e.g. "Math for Physicists") as
@@ -209,8 +214,12 @@ def kombimodul_grade(source_final_grades: Sequence[FinalGrade], graded: bool = T
             return FinalGrade(status="passed")
         return FinalGrade(status="none")
 
-    if all(g.status == "numeric" for g in source_final_grades):
-        avg = sum(g.value for g in source_final_grades) / len(source_final_grades)
-        return FinalGrade(status="numeric", value=avg)
+    if any(_is_failing(g) for g in source_final_grades):
+        return FinalGrade(status="failed")
 
-    return FinalGrade(status="none")
+    numeric_grades = [g.value for g in source_final_grades if g.status == "numeric"]
+    non_numeric = [g for g in source_final_grades if g.status != "numeric"]
+    if not numeric_grades or any(g.status != "passed" for g in non_numeric):
+        return FinalGrade(status="none")
+
+    return FinalGrade(status="numeric", value=sum(numeric_grades) / len(numeric_grades))

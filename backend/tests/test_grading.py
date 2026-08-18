@@ -139,6 +139,36 @@ class TestKombimodulGrade:
         assert result.status == "numeric"
         assert result.value == pytest.approx(1.7)
 
+    def test_a_passed_non_numeric_source_is_dropped_from_the_average(self):
+        """A graded combined module with one graded and one not-graded (but
+        passed) source module: the average is over the graded source(s)
+        only, the passed-but-non-numeric one doesn't block it."""
+        analysis = best_grade([GradeAttemptData("numeric", 2.0)])
+        language_course = best_grade([GradeAttemptData("pass")])
+        result = kombimodul_grade([analysis, language_course])
+        assert result.status == "numeric"
+        assert result.value == pytest.approx(2.0)
+
+    def test_a_still_open_non_numeric_source_still_blocks_the_average(self):
+        analysis = best_grade([GradeAttemptData("numeric", 2.0)])
+        language_course = best_grade([])  # not yet passed or failed
+        result = kombimodul_grade([analysis, language_course])
+        assert result.status == "none"
+
+    def test_a_failed_non_numeric_source_fails_the_whole_combined_module(self):
+        analysis = best_grade([GradeAttemptData("numeric", 2.0)])
+        language_course = best_grade([GradeAttemptData("fail")])
+        result = kombimodul_grade([analysis, language_course])
+        assert result.status == "failed"
+
+    def test_all_sources_passed_but_none_numeric_yields_none(self):
+        """Nothing to average - a graded combined module can't produce a
+        number out of thin air just because its sources all passed."""
+        a = best_grade([GradeAttemptData("pass")])
+        b = best_grade([GradeAttemptData("pass")])
+        result = kombimodul_grade([a, b])
+        assert result.status == "none"
+
 
 class TestKombimodulGradeUngraded:
     def test_passed_once_all_sources_pass(self):
