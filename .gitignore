@@ -22,3 +22,11 @@ frontend/.env*.local
 
 # Claude Code project guidance (local only, not part of the shipped project)
 /CLAUDE.md
+
+# Private ops runbook - server-specific (domain, paths, IPs), not meant
+# for the public repo
+/docs/deploy-hetzner.md
+
+# Server-local Docker Compose override (e.g. binding ports to 127.0.0.1
+# behind a reverse proxy) - see docs/deploy-hetzner.md
+docker-compose.override.yml

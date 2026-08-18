@@ -41,19 +41,27 @@ of rebuilding it in a spreadsheet every semester.
 - **Modules in multiple programs** – a module can be credited in several
   programs at once, each assignment counted independently (same principle
   as combined modules, see below).
+- **Graded or not graded** – both modules and combined modules can be
+  marked "not graded": only passed/failed attempts, no numeric grade -
+  their credits still count once passed, they just have no say in the
+  average. A combined module mixing graded and not-graded source modules
+  averages just the graded ones.
 - **Modules with up to 3 grade attempts** – each attempt is either a grade
   (German scale 1.0–5.0) or "passed"/"failed". The best attempt counts
   automatically.
 - **Weekly assignments & exam admission** – any number of assignment
   series per module (e.g. a weekly "problem set" and a bi-weekly
   "programming exercise"), each with its own admission threshold (default
-  50%). Log points per week, see progress live.
-- **Combined modules** – merge several modules into one module with its
-  own credits and averaged grade (e.g. *Calculus* + *Linear Algebra* →
-  *Math for Physicists*), independent of how the source modules count in
-  their own program.
+  50%). Give a series a week count up front and it's pre-filled at 0
+  points so you can see the whole series - and what's left - right away;
+  log real points per week as they come in.
+- **Combined modules** – merge one or more modules into one module with
+  its own credits and averaged grade (e.g. *Calculus* + *Linear Algebra*
+  → *Math for Physicists*, or a single module re-credited under different
+  credits), independent of how the source modules count in their own
+  program.
 - **Credit-weighted grade average** – per program and overall, with
-  special handling for ungraded "passed" modules (count toward credits,
+  special handling for not-graded "passed" modules (count toward credits,
   not toward the average).
 - **Dashboard** – overall average, credits per program and open exam
   admissions at a glance.
@@ -89,7 +97,7 @@ erDiagram
     MODULE ||--o{ GRADE_ATTEMPT : "up to 3"
     MODULE ||--o{ ASSIGNMENT_SERIES : has
     ASSIGNMENT_SERIES ||--o{ SUBMISSION : has
-    COMBINED_MODULE }o--o{ MODULE : "combines (>=2)"
+    COMBINED_MODULE }o--o{ MODULE : "combines (>=1)"
 
     USER {
         int id
@@ -109,6 +117,7 @@ erDiagram
         int user_id
         string name
         float credits
+        bool graded
     }
     GRADE_ATTEMPT {
         int id
@@ -134,6 +143,7 @@ erDiagram
         string name
         float credits
         int program_id
+        bool graded
     }
 ```
 
@@ -257,26 +267,29 @@ already in place; what's left needs a real server:
   wide open. Applies to the API only.
 - **Rate limiting** – login, register, verification/reset codes are all
   IP-limited (`app/routes/auth.py`) on top of the existing per-account code
-  cooldowns. In-memory storage is fine for one instance; point
-  `RATELIMIT_STORAGE_URI` at Redis if you ever scale past that.
+  cooldowns. Storage is in-memory (`app/limiter.py`), which is fine for a
+  single instance; scaling to multiple backend instances would need
+  switching that to a shared backend (e.g. Redis).
 - **Fail-fast in production** – set `APP_ENV=production` and the backend
   refuses to start with the default `SECRET_KEY`, and logs a warning if
   `ALLOWED_ORIGINS` is still wide open.
 - **Docker images** – both containers run as a non-root user; base images
   are pinned by digest (see the comments above each `FROM` line for how to
   bump them).
-- **Deploy workflow** – [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
-  is a ready-to-fill SSH + Docker Compose skeleton; the file itself documents
-  the one-time server setup and the repo secrets it needs.
 - **Backups** – see [`docs/backup.md`](docs/backup.md) for the Postgres
   dump/restore commands and a cron snippet.
 - **Optional error tracking** – set `SENTRY_DSN` to enable Sentry on the
   backend; unset, it's a no-op.
-- **Legal pages** – `/impressum` and `/datenschutz` exist with the required
-  structure, but the operator details (name, address, hosting/mail
-  provider) are still placeholders - fill those in before any real users
-  sign up (German Impressumspflicht/DSGVO apply once real personal data is
-  collected, even in a private beta).
+- **Legal pages** – `/impressum` and `/datenschutz` are filled in with the
+  operator's real details (German Impressumspflicht/DSGVO). Update them if
+  the hosting provider or mail provider changes.
+- **Security review** – a focused review of the auth/verification flows and
+  the CORS/rate-limiting hardening found no confirmed issues.
+
+What's left needs a real server: DNS, TLS termination, and the one-time
+host setup (Docker, reverse proxy, `.env`). That part is necessarily
+server-specific (domain, paths, SSH access) and isn't tracked in this
+repo.
 
 ## API Overview
 
@@ -299,23 +312,23 @@ user's data.
 | `DELETE /auth/me` | Permanently delete the account and all owned data (`current_password` required) |
 | `GET/POST /studiengaenge` | List / create degree programs |
 | `PATCH/DELETE /studiengaenge/<id>` | Rename / delete |
-| `GET/POST /module` | List modules (optional `?studiengang_id=`) / create (`studiengang_ids: []`) |
-| `GET/PATCH/DELETE /module/<id>` | Read / edit / delete a module |
-| `POST /module/<id>/grades` | Set a grade attempt (slot 1–3) |
+| `GET/POST /module` | List modules (optional `?studiengang_id=`) / create (`studiengang_ids: []`, `graded` default `true`) |
+| `GET/PATCH/DELETE /module/<id>` | Read / edit (incl. `graded`) / delete a module |
+| `POST /module/<id>/grades` | Set a grade attempt (slot 1–3); `numeric` is rejected if the module isn't graded |
 | `DELETE /grades/<id>` | Delete a grade attempt |
-| `POST /module/<id>/series` | Create an assignment series |
+| `POST /module/<id>/series` | Create an assignment series; with `total_weeks`, `points_per_week` is required and pre-fills that many weeks at 0 points |
 | `PATCH/DELETE /series/<id>` | Edit / delete an assignment series |
 | `POST /series/<id>/submissions` | Log a weekly submission |
 | `PATCH/DELETE /submissions/<id>` | Edit / delete a submission |
-| `GET/POST /kombimodule` | List / create combined modules |
-| `PATCH/DELETE /kombimodule/<id>` | Edit / delete a combined module |
+| `GET/POST /kombimodule` | List / create combined modules (`source_module_ids`: one or more, `graded` default `true`) |
+| `PATCH/DELETE /kombimodule/<id>` | Edit (incl. `graded`, `source_module_ids`) / delete a combined module |
 | `GET /stats/overview` | Grade average & exam-admission status per program + overall |
 
 ## Project Structure
 
 ```
 grade_tracker/
-├── .github/workflows/     # CI (tests/build) and the deploy skeleton
+├── .github/workflows/     # CI (backend tests, frontend lint/build, Playwright E2E)
 ├── docs/backup.md         # Postgres backup/restore
 ├── backend/
 │   ├── app/
