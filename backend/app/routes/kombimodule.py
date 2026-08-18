@@ -8,8 +8,8 @@ bp = Blueprint("kombimodule", __name__, url_prefix="/api/kombimodule")
 
 
 def _resolve_source_modules(raw_ids):
-    if not isinstance(raw_ids, list) or len(raw_ids) < 2:
-        return None, error("source_module_ids must be a list with at least 2 module IDs")
+    if not isinstance(raw_ids, list) or len(raw_ids) < 1:
+        return None, error("source_module_ids must be a list with at least 1 module ID")
     try:
         ids = [int(i) for i in raw_ids]
     except (TypeError, ValueError):
@@ -64,10 +64,15 @@ def create_kombimodul():
     if err:
         return err
 
+    graded = data.get("graded", True)
+    if not isinstance(graded, bool):
+        return error("graded must be true or false")
+
     kombi = KombiModul(
         name=name,
         credits=credits,
         studiengang_id=studiengang_id,
+        graded=graded,
         user_id=g.current_user.id,
         source_module=modules,
     )
@@ -119,6 +124,11 @@ def update_kombimodul(kombi_id: int):
         if err:
             return err
         kombi.source_module = modules
+    if "graded" in data:
+        graded = data["graded"]
+        if not isinstance(graded, bool):
+            return error("graded must be true or false")
+        kombi.graded = graded
 
     db.session.commit()
     return jsonify(kombi.to_dict())

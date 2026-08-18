@@ -27,6 +27,7 @@ export default function KombimodulePage() {
   const [credits, setCredits] = useState("");
   const [studiengangId, setStudiengangId] = useState("");
   const [sourceIds, setSourceIds] = useState<number[]>([]);
+  const [graded, setGraded] = useState(true);
 
   const load = () =>
     Promise.all([listKombimodule(), listStudiengaenge(), listModule()])
@@ -51,8 +52,8 @@ export default function KombimodulePage() {
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    if (sourceIds.length < 2) {
-      setError("Please select at least two source modules");
+    if (sourceIds.length < 1) {
+      setError("Please select at least one source module");
       return;
     }
     try {
@@ -61,10 +62,12 @@ export default function KombimodulePage() {
         credits: Number(credits),
         studiengang_id: Number(studiengangId),
         source_module_ids: sourceIds,
+        graded,
       });
       setName("");
       setCredits("");
       setSourceIds([]);
+      setGraded(true);
       await load();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Failed to create");
@@ -140,7 +143,8 @@ export default function KombimodulePage() {
 
             <div>
               <p className="mb-2 text-sm text-text-secondary">
-                Source modules (at least 2) – the grade is averaged:
+                Source modules – a single module is fine too (e.g. to re-credit it under
+                different credits):
               </p>
               <div className="flex flex-wrap gap-2">
                 {module.map((m) => (
@@ -164,6 +168,20 @@ export default function KombimodulePage() {
               </div>
             </div>
 
+            <label className="flex cursor-pointer items-start gap-2 text-sm text-text-secondary">
+              <input
+                type="checkbox"
+                checked={graded}
+                onChange={(e) => setGraded(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                Graded (benotet) – averages the source modules&apos; grades. Uncheck for an
+                ungraded (unbenotet) combined module: it counts as passed once every source
+                module has passed, with no numeric grade of its own.
+              </span>
+            </label>
+
             <button
               type="submit"
               className="rounded-lg bg-series-1 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
@@ -183,7 +201,14 @@ export default function KombimodulePage() {
           {kombimodule.map((k) => (
             <Card key={k.id} className="flex items-center justify-between">
               <div>
-                <div className="font-medium text-text-primary">{k.name}</div>
+                <div className="font-medium text-text-primary">
+                  {k.name}
+                  {!k.graded && (
+                    <span className="ml-2 rounded-full bg-text-muted/10 px-2 py-0.5 text-xs font-normal text-text-muted">
+                      unbenotet
+                    </span>
+                  )}
+                </div>
                 <div className="mt-0.5 text-sm text-text-muted">
                   {studiengaenge.find((s) => s.id === k.studiengang_id)?.name} ·{" "}
                   {formatCredits(k.credits)} · from {k.source_module.map((m) => m.name).join(" + ")}

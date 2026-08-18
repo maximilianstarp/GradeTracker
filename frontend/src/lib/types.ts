@@ -70,6 +70,7 @@ export interface KombiModul {
   name: string;
   credits: number;
   studiengang_id: number;
+  graded: boolean;
   source_module_ids: number[];
   source_module: { id: number; name: string }[];
   final_grade: FinalGrade;

@@ -129,3 +129,42 @@ class TestKombimodulGrade:
 
     def test_no_sources(self):
         assert kombimodul_grade([]).status == "none"
+
+    def test_single_source_module(self):
+        """A single source module is allowed - averaging one grade is just
+        that grade, which is exactly right for re-crediting a module under
+        different credits via its own combined module."""
+        analysis = best_grade([GradeAttemptData("numeric", 1.7)])
+        result = kombimodul_grade([analysis])
+        assert result.status == "numeric"
+        assert result.value == pytest.approx(1.7)
+
+
+class TestKombimodulGradeUngraded:
+    def test_passed_once_all_sources_pass(self):
+        analysis = best_grade([GradeAttemptData("numeric", 1.7)])  # numeric but <=4.0 passes
+        linalg = best_grade([GradeAttemptData("pass")])
+        result = kombimodul_grade([analysis, linalg], graded=False)
+        assert result.status == "passed"
+        assert result.value is None
+
+    def test_open_while_a_source_is_still_incomplete(self):
+        analysis = best_grade([GradeAttemptData("numeric", 1.7)])
+        linalg = best_grade([])  # no attempts yet
+        result = kombimodul_grade([analysis, linalg], graded=False)
+        assert result.status == "none"
+
+    def test_failed_if_a_source_fails_outright(self):
+        analysis = best_grade([GradeAttemptData("numeric", 1.7)])
+        linalg = best_grade([GradeAttemptData("fail")])
+        result = kombimodul_grade([analysis, linalg], graded=False)
+        assert result.status == "failed"
+
+    def test_failed_if_a_source_has_a_failing_numeric_grade(self):
+        analysis = best_grade([GradeAttemptData("numeric", 1.7)])
+        linalg = best_grade([GradeAttemptData("numeric", 4.3)])  # > 4.0 = failed
+        result = kombimodul_grade([analysis, linalg], graded=False)
+        assert result.status == "failed"
+
+    def test_no_sources_is_none(self):
+        assert kombimodul_grade([], graded=False).status == "none"

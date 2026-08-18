@@ -265,6 +265,10 @@ class KombiModul(db.Model):
     studiengang_id = db.Column(
         db.Integer, db.ForeignKey("studiengang.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # "benotet" (True, default) averages the source modules' numeric grades;
+    # "unbenotet" (False) treats the combined module as pass/fail instead -
+    # see grading.kombimodul_grade.
+    graded = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, default=utcnow)
 
     studiengang = db.relationship("Studiengang", back_populates="kombi_module")
@@ -274,12 +278,13 @@ class KombiModul(db.Model):
         from app import grading
 
         source_finals = [m.final_grade() for m in self.source_module]
-        final = grading.kombimodul_grade(source_finals)
+        final = grading.kombimodul_grade(source_finals, graded=self.graded)
         return {
             "id": self.id,
             "name": self.name,
             "credits": self.credits,
             "studiengang_id": self.studiengang_id,
+            "graded": self.graded,
             "source_module_ids": [m.id for m in self.source_module],
             "source_module": [{"id": m.id, "name": m.name} for m in self.source_module],
             "final_grade": {"status": final.status, "value": final.value},

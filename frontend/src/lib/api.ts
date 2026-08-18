@@ -155,10 +155,17 @@ export const createKombimodul = (data: {
   credits: number;
   studiengang_id: number;
   source_module_ids: number[];
+  graded?: boolean;
 }) => request<KombiModul>("/api/kombimodule", { method: "POST", body: JSON.stringify(data) });
 export const updateKombimodul = (
   id: number,
-  data: Partial<{ name: string; credits: number; studiengang_id: number; source_module_ids: number[] }>
+  data: Partial<{
+    name: string;
+    credits: number;
+    studiengang_id: number;
+    source_module_ids: number[];
+    graded: boolean;
+  }>
 ) => request<KombiModul>(`/api/kombimodule/${id}`, { method: "PATCH", body: JSON.stringify(data) });
 export const deleteKombimodul = (id: number) =>
   request<void>(`/api/kombimodule/${id}`, { method: "DELETE" });

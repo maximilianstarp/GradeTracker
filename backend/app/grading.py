@@ -162,12 +162,51 @@ def weighted_average(entries: Sequence[WeightedEntry]) -> WeightedAverageResult:
 # Kombi-Module (combined modules)
 # ---------------------------------------------------------------------------
 
-def kombimodul_grade(source_final_grades: Sequence[FinalGrade]) -> FinalGrade:
-    """A Kombi-Modul's grade is the arithmetic mean of its source modules'
-    final numeric grades. If any source module lacks a numeric grade, the
-    combined grade is not yet determined ("none").
+def _is_passing(grade: FinalGrade) -> bool:
+    """Whether a source module's final grade counts as passed: an explicit
+    "passed" pass/fail result, or a numeric grade at/better than the German
+    4.0 pass threshold (grades above 4.0 are a failing numeric grade, not
+    just "not yet graded")."""
+    if grade.status == "passed":
+        return True
+    if grade.status == "numeric" and grade.value is not None:
+        return grade.value <= 4.0
+    return False
+
+
+def _is_failing(grade: FinalGrade) -> bool:
+    if grade.status == "failed":
+        return True
+    if grade.status == "numeric" and grade.value is not None:
+        return grade.value > 4.0
+    return False
+
+
+def kombimodul_grade(source_final_grades: Sequence[FinalGrade], graded: bool = True) -> FinalGrade:
+    """A Kombi-Modul's grade combines its source modules' final grades.
+
+    Graded ("benotet", the default): the arithmetic mean of the source
+    modules' numeric grades. If any source module lacks a numeric grade,
+    the combined grade is not yet determined ("none"). A single source
+    module is allowed - the "average" of one grade is just that grade,
+    which is exactly right for re-crediting one module under different
+    credits via its own combined module.
+
+    Ungraded ("unbenotet"): pass/fail instead of a numeric average - some
+    programs list a combined module (e.g. "Math for Physicists") as
+    unbenotet even though its source modules (Analysis, Linear Algebra) are
+    each individually graded. "Failed" if any source module has failed
+    outright, "passed" once every source module has passed, "none" while
+    still open.
     """
     if not source_final_grades:
+        return FinalGrade(status="none")
+
+    if not graded:
+        if any(_is_failing(g) for g in source_final_grades):
+            return FinalGrade(status="failed")
+        if all(_is_passing(g) for g in source_final_grades):
+            return FinalGrade(status="passed")
         return FinalGrade(status="none")
 
     if all(g.status == "numeric" for g in source_final_grades):

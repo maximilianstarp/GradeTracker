@@ -193,17 +193,125 @@ class TestKombiModul:
             headers=auth_header,
         )
         assert resp.status_code == 201
-        assert resp.get_json()["final_grade"] == {"status": "numeric", "value": 1.5}
+        body = resp.get_json()
+        assert body["final_grade"] == {"status": "numeric", "value": 1.5}
+        assert body["graded"] is True
 
-    def test_needs_at_least_two_sources(self, client, auth_header):
+    def test_zero_sources_rejected(self, client, auth_header):
+        sg = create_studiengang(client, auth_header).get_json()
+        resp = client.post(
+            "/api/kombimodule",
+            json={"name": "X", "credits": 5, "studiengang_id": sg["id"], "source_module_ids": []},
+            headers=auth_header,
+        )
+        assert resp.status_code == 400
+
+    def test_single_source_module_allowed(self, client, auth_header):
+        """Re-crediting one module under different credits via its own
+        combined module - e.g. a module recognized from another program
+        with fewer credits than it's worth there."""
+        sg = create_studiengang(client, auth_header).get_json()
+        other_sg = create_studiengang(client, auth_header, "Physik").get_json()
+        modul = create_modul(client, auth_header, [sg["id"]], "Analysis I", 9).get_json()
+        client.post(
+            f"/api/module/{modul['id']}/grades",
+            json={"slot": 1, "kind": "numeric", "value": 1.7},
+            headers=auth_header,
+        )
+
+        resp = client.post(
+            "/api/kombimodule",
+            json={
+                "name": "Analysis (angerechnet)",
+                "credits": 4,
+                "studiengang_id": other_sg["id"],
+                "source_module_ids": [modul["id"]],
+            },
+            headers=auth_header,
+        )
+        assert resp.status_code == 201
+        assert resp.get_json()["final_grade"] == {"status": "numeric", "value": 1.7}
+
+    def test_graded_defaults_true_and_is_toggleable(self, client, auth_header):
         sg = create_studiengang(client, auth_header).get_json()
         modul = create_modul(client, auth_header, [sg["id"]]).get_json()
+
         resp = client.post(
             "/api/kombimodule",
             json={"name": "X", "credits": 5, "studiengang_id": sg["id"], "source_module_ids": [modul["id"]]},
             headers=auth_header,
         )
-        assert resp.status_code == 400
+        kombi = resp.get_json()
+        assert kombi["graded"] is True
+
+        resp = client.patch(
+            f"/api/kombimodule/{kombi['id']}", json={"graded": False}, headers=auth_header
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()["graded"] is False
+
+    def test_ungraded_kombimodul_passes_once_all_sources_pass(self, client, auth_header):
+        mathe = create_studiengang(client, auth_header, "Mathematik").get_json()
+        physik = create_studiengang(client, auth_header, "Physik").get_json()
+        analysis = create_modul(client, auth_header, [mathe["id"]], "Analysis I", 9).get_json()
+        linalg = create_modul(client, auth_header, [mathe["id"]], "Lineare Algebra I", 9).get_json()
+
+        resp = client.post(
+            "/api/kombimodule",
+            json={
+                "name": "Math for Physicists",
+                "credits": 14,
+                "studiengang_id": physik["id"],
+                "source_module_ids": [analysis["id"], linalg["id"]],
+                "graded": False,
+            },
+            headers=auth_header,
+        )
+        kombi_id = resp.get_json()["id"]
+        assert resp.get_json()["final_grade"] == {"status": "none", "value": None}
+
+        client.post(
+            f"/api/module/{analysis['id']}/grades",
+            json={"slot": 1, "kind": "numeric", "value": 1.7},
+            headers=auth_header,
+        )
+        client.post(
+            f"/api/module/{linalg['id']}/grades",
+            json={"slot": 1, "kind": "pass"},
+            headers=auth_header,
+        )
+
+        resp = client.get(f"/api/kombimodule/{kombi_id}", headers=auth_header)
+        assert resp.get_json()["final_grade"] == {"status": "passed", "value": None}
+
+    def test_ungraded_kombimodul_fails_if_a_source_fails(self, client, auth_header):
+        mathe = create_studiengang(client, auth_header, "Mathematik").get_json()
+        physik = create_studiengang(client, auth_header, "Physik").get_json()
+        analysis = create_modul(client, auth_header, [mathe["id"]], "Analysis I", 9).get_json()
+        linalg = create_modul(client, auth_header, [mathe["id"]], "Lineare Algebra I", 9).get_json()
+        client.post(
+            f"/api/module/{analysis['id']}/grades",
+            json={"slot": 1, "kind": "numeric", "value": 1.7},
+            headers=auth_header,
+        )
+        client.post(
+            f"/api/module/{linalg['id']}/grades",
+            json={"slot": 1, "kind": "fail"},
+            headers=auth_header,
+        )
+
+        resp = client.post(
+            "/api/kombimodule",
+            json={
+                "name": "Math for Physicists",
+                "credits": 14,
+                "studiengang_id": physik["id"],
+                "source_module_ids": [analysis["id"], linalg["id"]],
+                "graded": False,
+            },
+            headers=auth_header,
+        )
+        assert resp.get_json()["final_grade"] == {"status": "failed", "value": None}
 
 
 class TestStatsOverview:
