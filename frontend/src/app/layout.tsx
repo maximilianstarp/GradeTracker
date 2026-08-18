@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/AuthContext";
 import { AuthGate } from "@/components/AuthGate";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
+import { Footer } from "@/components/Footer";
 import { themeInitScript } from "@/lib/theme";
 import "./globals.css";
 
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <AuthGate>{children}</AuthGate>
           </ConfirmProvider>
         </AuthProvider>
+        <Footer />
       </body>
     </html>
   );

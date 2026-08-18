@@ -1,6 +1,8 @@
 services:
   db:
-    image: postgres:16-alpine
+    # Pinned by digest (postgres:16-alpine as of 2026-08-18); bump
+    # deliberately with `docker pull postgres:16-alpine` + update the digest.
+    image: postgres:16-alpine@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685
     container_name: grade-tracker-db
     restart: unless-stopped
     environment:
@@ -31,6 +33,11 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
       SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      # Unset by default (local dev). Set in .env for a real deployment -
+      # see .env.example.
+      APP_ENV: ${APP_ENV:-}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
     depends_on:
       db:
         condition: service_healthy

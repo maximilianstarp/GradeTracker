@@ -229,6 +229,37 @@ pytest
 The grading logic (`grading.py`) is fully unit-tested; the API routes are
 covered by Flask test-client tests.
 
+## Beta Deployment
+
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the backend
+test suite and the frontend lint/build on every push. Everything below is
+already in place; what's left needs a real server:
+
+- **CORS** – restrict via `ALLOWED_ORIGINS` (comma-separated), otherwise
+  wide open. Applies to the API only.
+- **Rate limiting** – login, register, verification/reset codes are all
+  IP-limited (`app/routes/auth.py`) on top of the existing per-account code
+  cooldowns. In-memory storage is fine for one instance; point
+  `RATELIMIT_STORAGE_URI` at Redis if you ever scale past that.
+- **Fail-fast in production** – set `APP_ENV=production` and the backend
+  refuses to start with the default `SECRET_KEY`, and logs a warning if
+  `ALLOWED_ORIGINS` is still wide open.
+- **Docker images** – both containers run as a non-root user; base images
+  are pinned by digest (see the comments above each `FROM` line for how to
+  bump them).
+- **Deploy workflow** – [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
+  is a ready-to-fill SSH + Docker Compose skeleton; the file itself documents
+  the one-time server setup and the repo secrets it needs.
+- **Backups** – see [`docs/backup.md`](docs/backup.md) for the Postgres
+  dump/restore commands and a cron snippet.
+- **Optional error tracking** – set `SENTRY_DSN` to enable Sentry on the
+  backend; unset, it's a no-op.
+- **Legal pages** – `/impressum` and `/datenschutz` exist with the required
+  structure, but the operator details (name, address, hosting/mail
+  provider) are still placeholders - fill those in before any real users
+  sign up (German Impressumspflicht/DSGVO apply once real personal data is
+  collected, even in a private beta).
+
 ## API Overview
 
 All endpoints under `/api`, JSON-based. Except for `/api/health` and
@@ -266,12 +297,15 @@ user's data.
 
 ```
 grade_tracker/
+├── .github/workflows/     # CI (tests/build) and the deploy skeleton
+├── docs/backup.md         # Postgres backup/restore
 ├── backend/
 │   ├── app/
 │   │   ├── grading.py       # pure calculation logic (average, admission, combined-module averaging)
 │   │   ├── auth.py          # bearer token issuing/verification, login_required
 │   │   ├── codes.py         # email verification / password-reset code generation & checks
 │   │   ├── email.py         # outbound email (SMTP, or logged when unconfigured)
+│   │   ├── limiter.py       # shared Flask-Limiter instance
 │   │   ├── models.py        # SQLAlchemy models
 │   │   └── routes/          # Flask blueprints (REST endpoints, incl. auth.py)
 │   ├── migrations/            # Alembic schema migrations (Flask-Migrate)
@@ -280,8 +314,8 @@ grade_tracker/
 │   └── seed.py                # example data incl. demo user
 └── frontend/
     └── src/
-        ├── app/                # Next.js App Router pages (incl. login/signup/account/verify-email/forgot-password/reset-password)
-        ├── components/         # UI building blocks (ProgressBar, GradeBadge, ConfirmDialog, …)
+        ├── app/                # Next.js App Router pages (incl. login/signup/account/verify-email/forgot-password/reset-password/impressum/datenschutz)
+        ├── components/         # UI building blocks (ProgressBar, GradeBadge, ConfirmDialog, Footer, …)
         └── lib/                # API client, types, AuthContext
 ```
 

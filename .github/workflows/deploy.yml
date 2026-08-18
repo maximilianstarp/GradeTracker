@@ -1,0 +1,52 @@
+# Beta deploy: SSH onto the server, pull the latest code and let Docker
+# Compose rebuild/restart what changed. This is a SKELETON - it will fail
+# until the secrets below exist in the repo (Settings -> Secrets and
+# variables -> Actions) and a one-time setup has happened on the server.
+#
+# One-time server setup:
+#   1. Install Docker + the Docker Compose plugin.
+#   2. `git clone` this repo to some path (that's DEPLOY_PATH below).
+#   3. In that checkout, create a `.env` from `.env.example` with real
+#      values - at minimum SECRET_KEY, APP_ENV=production, ALLOWED_ORIGINS
+#      (the deployed frontend URL) and NEXT_PUBLIC_API_URL. Add SMTP_* once
+#      you have mail credentials.
+#   4. Create a deploy key pair (`ssh-keygen`), add the public key to the
+#      server's `~/.ssh/authorized_keys` for the deploy user.
+#
+# Required repo secrets:
+#   DEPLOY_HOST      - server hostname/IP
+#   DEPLOY_USER      - SSH user with docker permissions
+#   DEPLOY_SSH_KEY   - private half of the deploy key pair
+#   DEPLOY_PATH      - absolute path of the git checkout on the server
+#
+# Once all of that exists, either run this manually (Actions tab -> Deploy
+# (Beta) -> Run workflow), or switch the trigger below to deploy on every
+# push to main:
+#
+#   on:
+#     push:
+#       branches: [main]
+
+name: Deploy (Beta)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd "${{ secrets.DEPLOY_PATH }}"
+            git fetch origin main
+            git reset --hard origin/main
+            docker compose build
+            docker compose up -d
+            docker image prune -f

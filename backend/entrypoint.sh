@@ -5,4 +5,8 @@ set -e
 
 flask db upgrade
 
-exec gunicorn --bind 0.0.0.0:5000 --workers 2 wsgi:app
+exec gunicorn --bind 0.0.0.0:5000 --workers 2 \
+    --timeout 30 --graceful-timeout 30 \
+    --worker-tmp-dir /dev/shm \
+    --access-logfile - --error-logfile - \
+    wsgi:app

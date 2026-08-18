@@ -13,6 +13,7 @@ from app.codes import (
     set_code,
 )
 from app.email import send_verification_code
+from app.limiter import limiter
 from app.models import User, db
 from app.utils import error
 
@@ -49,6 +50,7 @@ def _email_taken(email: str, exclude_user_id: int | None = None) -> bool:
 
 
 @bp.post("/register")
+@limiter.limit("5 per hour")
 def register():
     data = request.get_json(silent=True) or {}
     username = _normalize_username(data.get("username"))
@@ -78,6 +80,7 @@ def register():
 
 
 @bp.post("/login")
+@limiter.limit("10 per minute")
 def login():
     data = request.get_json(silent=True) or {}
     email = _normalize_email(data.get("email"))
@@ -148,6 +151,7 @@ def update_me():
 
 @bp.post("/verify-email")
 @login_required
+@limiter.limit("20 per hour")
 def verify_email():
     user = g.current_user
     if user.email_verified:
@@ -169,6 +173,7 @@ def verify_email():
 
 @bp.post("/verify-email-change")
 @login_required
+@limiter.limit("20 per hour")
 def verify_email_change():
     user = g.current_user
     if not user.pending_email:
@@ -198,6 +203,7 @@ def verify_email_change():
 
 @bp.post("/resend-code")
 @login_required
+@limiter.limit("10 per hour")
 def resend_code():
     user = g.current_user
     if user.code_purpose not in (PURPOSE_VERIFY_EMAIL, PURPOSE_CHANGE_EMAIL):
@@ -217,6 +223,7 @@ def resend_code():
 
 
 @bp.post("/forgot-password")
+@limiter.limit("5 per hour")
 def forgot_password():
     data = request.get_json(silent=True) or {}
     email = _normalize_email(data.get("email"))
@@ -233,6 +240,7 @@ def forgot_password():
 
 
 @bp.post("/reset-password")
+@limiter.limit("10 per hour")
 def reset_password():
     data = request.get_json(silent=True) or {}
     email = _normalize_email(data.get("email"))
