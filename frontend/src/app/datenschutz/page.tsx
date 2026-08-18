@@ -10,26 +10,17 @@ export default function DatenschutzPage() {
         Datenschutzerklärung
       </h1>
 
-      <Card className="border-status-warning/40">
-        <p className="text-sm text-status-warning">
-          <strong>TODO vor Live-Betrieb:</strong> Verantwortlicher und
-          Hosting-/Mail-Anbieter (<code>[…]</code>) unten eintragen. Der Rest
-          beschreibt, was diese Anwendung technisch tatsächlich speichert und
-          verarbeitet.
-        </p>
-      </Card>
-
       <Card className="space-y-4 text-sm text-text-secondary">
         <section>
           <h2 className="mb-1 font-semibold text-text-primary">
             Verantwortlicher
           </h2>
           <p>
-            [Vor- und Nachname]
+            Maximilian Starp
             <br />
-            [Straße Hausnummer, PLZ Ort]
+            Robert-Havemann-Str. 3, 53121 Bonn
             <br />
-            E-Mail: [kontakt@example.com]
+            E-Mail: maximilian@starp.email
           </p>
         </section>
 
@@ -80,17 +71,19 @@ export default function DatenschutzPage() {
             E-Mail-Versand
           </h2>
           <p>
-            Für Verifizierungs- und Reset-Codes wird deine E-Mail-Adresse an
-            unseren E-Mail-Versanddienstleister [Name des SMTP-/Mail-Anbieters]
-            übermittelt.
+            Aktuell wird kein externer E-Mail-Versanddienstleister
+            eingebunden - Verifizierungs- und Reset-Codes werden serverseitig
+            erzeugt und nicht an Dritte weitergegeben. Sobald ein
+            E-Mail-Versand für Verifizierungs- und Reset-Codes eingerichtet
+            ist, wird der eingesetzte Dienstleister hier ergänzt.
           </p>
         </section>
 
         <section>
           <h2 className="mb-1 font-semibold text-text-primary">Hosting</h2>
           <p>
-            Diese Anwendung läuft auf Servern von [Name des
-            Hosting-Anbieters, Standort].
+            Diese Anwendung läuft auf Servern von Hetzner Online GmbH,
+            Industriestr. 25, 91710 Gunzenhausen.
           </p>
         </section>
 

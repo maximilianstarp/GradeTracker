@@ -229,10 +229,28 @@ pytest
 The grading logic (`grading.py`) is fully unit-tested; the API routes are
 covered by Flask test-client tests.
 
+### End-to-end tests
+
+```bash
+cd frontend
+npx playwright install --with-deps chromium   # once
+npm run test:e2e
+```
+
+Runs a full account lifecycle (signup → verify email → change
+username/email → confirm the email change → log out/in → forgot/reset
+password → log in with the new password → delete the account) against the
+real Docker Compose stack in a real browser - see
+[`frontend/e2e/`](frontend/e2e/) and
+[`frontend/playwright.config.ts`](frontend/playwright.config.ts). If
+`docker compose` is already running locally, tests reuse it; otherwise the
+config starts it for you.
+
 ## Beta Deployment
 
 CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the backend
-test suite and the frontend lint/build on every push. Everything below is
+test suite, the frontend lint/build, and the Playwright end-to-end suite
+(against a real `docker compose` stack) on every push. Everything below is
 already in place; what's left needs a real server:
 
 - **CORS** – restrict via `ALLOWED_ORIGINS` (comma-separated), otherwise
@@ -313,6 +331,8 @@ grade_tracker/
 │   ├── tests/                # pytest
 │   └── seed.py                # example data incl. demo user
 └── frontend/
+    ├── e2e/                    # Playwright end-to-end tests (run against docker compose)
+    ├── playwright.config.ts
     └── src/
         ├── app/                # Next.js App Router pages (incl. login/signup/account/verify-email/forgot-password/reset-password/impressum/datenschutz)
         ├── components/         # UI building blocks (ProgressBar, GradeBadge, ConfirmDialog, Footer, …)
