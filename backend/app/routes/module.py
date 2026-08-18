@@ -1,7 +1,7 @@
 from flask import Blueprint, g, jsonify, request
 
 from app.auth import login_required
-from app.models import GradeAttempt, Modul, Studiengang, SubmissionSeries, db
+from app.models import GradeAttempt, Modul, Studiengang, Submission, SubmissionSeries, db
 from app.utils import error, get_owned
 
 bp = Blueprint("module", __name__, url_prefix="/api")
@@ -64,7 +64,13 @@ def create_modul():
     if err:
         return err
 
-    modul = Modul(name=name, credits=credits, user_id=g.current_user.id, studiengaenge=studiengaenge)
+    graded = data.get("graded", True)
+    if not isinstance(graded, bool):
+        return error("graded must be true or false")
+
+    modul = Modul(
+        name=name, credits=credits, graded=graded, user_id=g.current_user.id, studiengaenge=studiengaenge
+    )
     db.session.add(modul)
     db.session.commit()
     return jsonify(modul.to_dict()), 201
@@ -108,6 +114,17 @@ def update_modul(modul_id: int):
             return err
         modul.studiengaenge = studiengaenge
 
+    if "graded" in data:
+        graded = data["graded"]
+        if not isinstance(graded, bool):
+            return error("graded must be true or false")
+        if not graded and any(a.kind == "numeric" for a in modul.grade_attempts):
+            return error(
+                "This module still has a numeric grade attempt - clear it before marking the "
+                "module as not graded"
+            )
+        modul.graded = graded
+
     db.session.commit()
     return jsonify(modul.to_dict())
 
@@ -146,6 +163,8 @@ def upsert_grade(modul_id: int):
         return error("slot must be 1, 2 or 3")
     if kind not in VALID_KINDS:
         return error("kind must be 'numeric', 'pass' or 'fail'")
+    if kind == "numeric" and not modul.graded:
+        return error("This module is not graded - only 'passed' or 'failed' attempts are allowed")
 
     if kind == "numeric":
         try:
@@ -203,15 +222,38 @@ def create_series(modul_id: int):
         return error("threshold_percent must be between 0 and 100")
 
     total_weeks = data.get("total_weeks")
+    points_per_week = None
     if total_weeks is not None:
         try:
             total_weeks = int(total_weeks)
         except (TypeError, ValueError):
             return error("total_weeks must be a whole number")
+        if total_weeks <= 0:
+            return error("total_weeks must be positive")
+        try:
+            points_per_week = float(data.get("points_per_week"))
+        except (TypeError, ValueError):
+            return error("points_per_week is required (and must be a number) when total_weeks is set")
+        if points_per_week <= 0:
+            return error("points_per_week must be positive")
 
     series = SubmissionSeries(
         modul_id=modul_id, name=name, threshold_percent=threshold, total_weeks=total_weeks
     )
     db.session.add(series)
+    db.session.flush()  # assigns series.id, needed for the Submission rows below
+
+    if total_weeks is not None:
+        # Pre-fill every week at 0 achieved so progress/Zulassung can be
+        # estimated immediately, before any assignment has actually been
+        # done - weeks can still be added/removed individually later if the
+        # real count changes.
+        for week in range(1, total_weeks + 1):
+            db.session.add(
+                Submission(
+                    series_id=series.id, week_number=week, points_achieved=0, points_max=points_per_week
+                )
+            )
+
     db.session.commit()
     return jsonify(modul.to_dict()), 201

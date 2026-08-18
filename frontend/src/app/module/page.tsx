@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ApiError, createModul, listModule, listStudiengaenge } from "@/lib/api";
 import { Card } from "@/components/Card";
 import { GradeBadge } from "@/components/GradeBadge";
+import { NotGradedBadge } from "@/components/NotGradedBadge";
 import { StudiengangMultiSelect } from "@/components/StudiengangMultiSelect";
 import { formatCredits } from "@/lib/format";
 import type { Modul, Studiengang } from "@/lib/types";
@@ -22,6 +23,7 @@ export default function ModulePage() {
   const [name, setName] = useState("");
   const [credits, setCredits] = useState("");
   const [studiengangIds, setStudiengangIds] = useState<number[]>([]);
+  const [graded, setGraded] = useState(true);
 
   const load = () =>
     Promise.all([listStudiengaenge(), listModule()])
@@ -50,10 +52,16 @@ export default function ModulePage() {
     e.preventDefault();
     setError(null);
     try {
-      await createModul({ name: name.trim(), credits: Number(credits), studiengang_ids: studiengangIds });
+      await createModul({
+        name: name.trim(),
+        credits: Number(credits),
+        studiengang_ids: studiengangIds,
+        graded,
+      });
       setName("");
       setCredits("");
       setStudiengangIds([]);
+      setGraded(true);
       await load();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Failed to create");
@@ -110,6 +118,19 @@ export default function ModulePage() {
               onChange={setStudiengangIds}
             />
           </div>
+          <label className="flex cursor-pointer items-start gap-2 text-sm text-text-secondary">
+            <input
+              type="checkbox"
+              checked={graded}
+              onChange={(e) => setGraded(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              Graded – has a numeric grade. Uncheck for a not graded module: only
+              passed/failed, still needs exam admission and still earns credits once passed,
+              but has no say in the average.
+            </span>
+          </label>
         </form>
       </Card>
 
@@ -136,7 +157,10 @@ export default function ModulePage() {
             <Link key={m.id} href={`/module/${m.id}`}>
               <Card className="flex items-center justify-between transition-colors hover:border-series-1/40">
                 <div>
-                  <div className="font-medium text-text-primary">{m.name}</div>
+                  <div className="font-medium text-text-primary">
+                    {m.name}
+                    {!m.graded && <NotGradedBadge />}
+                  </div>
                   <div className="mt-0.5 text-sm text-text-muted">
                     {studiengangNames(m)} · {formatCredits(m.credits)}
                   </div>

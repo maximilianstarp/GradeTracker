@@ -44,6 +44,7 @@ export interface Modul {
   id: number;
   name: string;
   credits: number;
+  graded: boolean;
   studiengang_ids: number[];
   studiengaenge: { id: number; name: string }[];
   grade_attempts: GradeAttempt[];

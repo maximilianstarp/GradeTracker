@@ -14,6 +14,7 @@ import { Card } from "@/components/Card";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { GradeBadge } from "@/components/GradeBadge";
 import { GradeSlots } from "@/components/GradeSlots";
+import { NotGradedBadge } from "@/components/NotGradedBadge";
 import { SeriesEditor } from "@/components/SeriesEditor";
 import { StudiengangMultiSelect } from "@/components/StudiengangMultiSelect";
 import { formatCredits } from "@/lib/format";
@@ -32,6 +33,7 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
   const [name, setName] = useState("");
   const [credits, setCredits] = useState("");
   const [studiengangIds, setStudiengangIds] = useState<number[]>([]);
+  const [graded, setGraded] = useState(true);
 
   useEffect(() => {
     Promise.all([getModul(modulId), listStudiengaenge()])
@@ -41,6 +43,7 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
         setName(m.name);
         setCredits(String(m.credits));
         setStudiengangIds(m.studiengang_ids);
+        setGraded(m.graded);
       })
       .catch((e) => setError(e instanceof ApiError ? e.message : "Failed to load"));
   }, [modulId]);
@@ -52,6 +55,7 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
         name: name.trim(),
         credits: Number(credits),
         studiengang_ids: studiengangIds,
+        graded,
       });
       setModul(updated);
       setEditingHeader(false);
@@ -121,6 +125,14 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
               selectedIds={studiengangIds}
               onChange={setStudiengangIds}
             />
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-text-secondary">
+              <input
+                type="checkbox"
+                checked={graded}
+                onChange={(e) => setGraded(e.target.checked)}
+              />
+              Graded
+            </label>
             <div className="flex gap-2">
               <button
                 onClick={handleSaveHeader}
@@ -139,7 +151,10 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
         ) : (
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-2xl font-semibold text-text-primary">{modul.name}</h1>
+              <h1 className="text-2xl font-semibold text-text-primary">
+                {modul.name}
+                {!modul.graded && <NotGradedBadge />}
+              </h1>
               <p className="mt-1 text-text-secondary">
                 {modul.studiengaenge.length > 0
                   ? modul.studiengaenge.map((s) => s.name).join(", ")
@@ -181,9 +196,16 @@ export default function ModulDetailPage(props: PageProps<"/module/[id]">) {
       <Card>
         <h2 className="mb-3 font-semibold text-text-primary">Grades</h2>
         <p className="mb-3 text-sm text-text-muted">
-          Up to three attempts – the best grade counts. Either a grade or &quot;passed&quot; / &quot;failed&quot;.
+          {modul.graded
+            ? "Up to three attempts – the best grade counts. Either a grade or \"passed\" / \"failed\"."
+            : "This module is not graded – up to three attempts, either \"passed\" or \"failed\"."}
         </p>
-        <GradeSlots modulId={modul.id} attempts={modul.grade_attempts} onModulUpdate={setModul} />
+        <GradeSlots
+          modulId={modul.id}
+          attempts={modul.grade_attempts}
+          graded={modul.graded}
+          onModulUpdate={setModul}
+        />
       </Card>
 
       <Card>

@@ -9,10 +9,12 @@ const SLOTS = [1, 2, 3];
 export function GradeSlots({
   modulId,
   attempts,
+  graded,
   onModulUpdate,
 }: {
   modulId: number;
   attempts: GradeAttempt[];
+  graded: boolean;
   onModulUpdate: (modul: Modul) => void;
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +30,7 @@ export function GradeSlots({
             slot={slot}
             modulId={modulId}
             attempt={attempt}
+            graded={graded}
             onModulUpdate={onModulUpdate}
             onError={setError}
           />
@@ -41,16 +44,18 @@ function GradeSlotRow({
   slot,
   modulId,
   attempt,
+  graded,
   onModulUpdate,
   onError,
 }: {
   slot: number;
   modulId: number;
   attempt: GradeAttempt | undefined;
+  graded: boolean;
   onModulUpdate: (modul: Modul) => void;
   onError: (msg: string | null) => void;
 }) {
-  const [kind, setKind] = useState<GradeKind>(attempt?.kind ?? "numeric");
+  const [kind, setKind] = useState<GradeKind>(attempt?.kind ?? (graded ? "numeric" : "pass"));
   const [value, setValue] = useState(attempt?.value?.toString() ?? "");
 
   async function handleSave() {
@@ -87,11 +92,11 @@ function GradeSlotRow({
         onChange={(e) => setKind(e.target.value as GradeKind)}
         className="rounded-lg border border-border bg-surface-raised px-2 py-1.5 text-sm outline-none focus:border-series-1"
       >
-        <option value="numeric">Grade</option>
+        {graded && <option value="numeric">Grade</option>}
         <option value="pass">Passed</option>
         <option value="fail">Failed</option>
       </select>
-      {kind === "numeric" && (
+      {kind === "numeric" && graded && (
         <input
           value={value}
           onChange={(e) => setValue(e.target.value)}

@@ -27,6 +27,7 @@ export function SeriesEditor({
   const [seriesName, setSeriesName] = useState("");
   const [threshold, setThreshold] = useState("50");
   const [totalWeeks, setTotalWeeks] = useState("");
+  const [pointsPerWeek, setPointsPerWeek] = useState("");
 
   async function handleCreateSeries(e: FormEvent) {
     e.preventDefault();
@@ -35,12 +36,15 @@ export function SeriesEditor({
       const modul = await createSeries(modulId, {
         name: seriesName.trim(),
         threshold_percent: Number(threshold),
-        ...(totalWeeks ? { total_weeks: Number(totalWeeks) } : {}),
+        ...(totalWeeks
+          ? { total_weeks: Number(totalWeeks), points_per_week: Number(pointsPerWeek) }
+          : {}),
       });
       onModulUpdate(modul);
       setSeriesName("");
       setThreshold("50");
       setTotalWeeks("");
+      setPointsPerWeek("");
       setShowNewSeries(false);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Failed to create the assignment series");
@@ -58,7 +62,7 @@ export function SeriesEditor({
       {showNewSeries ? (
         <form
           onSubmit={handleCreateSeries}
-          className="grid grid-cols-1 gap-2 rounded-lg border border-dashed border-border p-3 sm:grid-cols-[2fr_1fr_1fr_auto_auto]"
+          className="grid grid-cols-1 gap-2 rounded-lg border border-dashed border-border p-3 sm:grid-cols-[2fr_1fr_1fr_1fr_auto_auto]"
         >
           <input
             value={seriesName}
@@ -83,6 +87,18 @@ export function SeriesEditor({
             min="1"
             placeholder="Weeks (optional)"
             className="rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-sm outline-none focus:border-series-1"
+          />
+          <input
+            value={pointsPerWeek}
+            onChange={(e) => setPointsPerWeek(e.target.value)}
+            type="number"
+            min="0.5"
+            step="0.5"
+            placeholder="Points/week"
+            disabled={!totalWeeks}
+            required={!!totalWeeks}
+            title="Pre-fills every week at 0 points achieved out of this max, so you can see the whole series - and estimate what's left - right away"
+            className="rounded-lg border border-border bg-surface-raised px-3 py-1.5 text-sm outline-none focus:border-series-1 disabled:opacity-50"
           />
           <button
             type="submit"

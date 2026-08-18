@@ -163,6 +163,124 @@ class TestModule:
         body = resp.get_json()
         assert body["zulassung"] is True  # 11/20 = 55%
 
+    def test_create_series_with_total_weeks_prefills_submissions(self, client, auth_header):
+        sg = create_studiengang(client, auth_header).get_json()
+        modul = create_modul(client, auth_header, [sg["id"]]).get_json()
+
+        resp = client.post(
+            f"/api/module/{modul['id']}/series",
+            json={"name": "Problem Set", "total_weeks": 13, "points_per_week": 10},
+            headers=auth_header,
+        )
+        series = resp.get_json()["series"][0]
+        assert len(series["submissions"]) == 13
+        assert [s["week_number"] for s in series["submissions"]] == list(range(1, 14))
+        assert all(s["points_achieved"] == 0 and s["points_max"] == 10 for s in series["submissions"])
+        assert series["progress"]["percent"] == 0
+
+    def test_create_series_total_weeks_requires_points_per_week(self, client, auth_header):
+        sg = create_studiengang(client, auth_header).get_json()
+        modul = create_modul(client, auth_header, [sg["id"]]).get_json()
+        resp = client.post(
+            f"/api/module/{modul['id']}/series",
+            json={"name": "Problem Set", "total_weeks": 13},
+            headers=auth_header,
+        )
+        assert resp.status_code == 400
+
+    def test_create_series_without_total_weeks_has_no_prefill(self, client, auth_header):
+        sg = create_studiengang(client, auth_header).get_json()
+        modul = create_modul(client, auth_header, [sg["id"]]).get_json()
+        resp = client.post(
+            f"/api/module/{modul['id']}/series",
+            json={"name": "Problem Set"},
+            headers=auth_header,
+        )
+        assert resp.get_json()["series"][0]["submissions"] == []
+
+    def test_graded_defaults_true_and_is_toggleable(self, client, auth_header):
+        sg = create_studiengang(client, auth_header).get_json()
+        resp = create_modul(client, auth_header, [sg["id"]])
+        modul = resp.get_json()
+        assert modul["graded"] is True
+
+        resp = client.patch(
+            f"/api/module/{modul['id']}", json={"graded": False}, headers=auth_header
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()["graded"] is False
+
+    def test_ungraded_module_rejects_numeric_grade(self, client, auth_header):
+        sg = create_studiengang(client, auth_header).get_json()
+        resp = client.post(
+            "/api/module",
+            json={"name": "Spanisch A1", "credits": 3, "studiengang_ids": [sg["id"]], "graded": False},
+            headers=auth_header,
+        )
+        modul = resp.get_json()
+        resp = client.post(
+            f"/api/module/{modul['id']}/grades",
+            json={"slot": 1, "kind": "numeric", "value": 1.7},
+            headers=auth_header,
+        )
+        assert resp.status_code == 400
+
+    def test_ungraded_module_allows_pass_fail(self, client, auth_header):
+        sg = create_studiengang(client, auth_header).get_json()
+        resp = client.post(
+            "/api/module",
+            json={"name": "Spanisch A1", "credits": 3, "studiengang_ids": [sg["id"]], "graded": False},
+            headers=auth_header,
+        )
+        modul = resp.get_json()
+        resp = client.post(
+            f"/api/module/{modul['id']}/grades",
+            json={"slot": 1, "kind": "pass"},
+            headers=auth_header,
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()["final_grade"] == {"status": "passed", "value": None}
+
+    def test_cannot_mark_module_ungraded_with_existing_numeric_grade(self, client, auth_header):
+        sg = create_studiengang(client, auth_header).get_json()
+        modul = create_modul(client, auth_header, [sg["id"]]).get_json()
+        client.post(
+            f"/api/module/{modul['id']}/grades",
+            json={"slot": 1, "kind": "numeric", "value": 1.7},
+            headers=auth_header,
+        )
+        resp = client.patch(
+            f"/api/module/{modul['id']}", json={"graded": False}, headers=auth_header
+        )
+        assert resp.status_code == 400
+
+    def test_ungraded_module_credits_count_towards_total_not_average(self, client, auth_header):
+        sg = create_studiengang(client, auth_header).get_json()
+        graded_modul = create_modul(client, auth_header, [sg["id"]], "Analysis I", 9).get_json()
+        client.post(
+            f"/api/module/{graded_modul['id']}/grades",
+            json={"slot": 1, "kind": "numeric", "value": 2.0},
+            headers=auth_header,
+        )
+        resp = client.post(
+            "/api/module",
+            json={"name": "Spanisch A1", "credits": 3, "studiengang_ids": [sg["id"]], "graded": False},
+            headers=auth_header,
+        )
+        ungraded_modul = resp.get_json()
+        client.post(
+            f"/api/module/{ungraded_modul['id']}/grades",
+            json={"slot": 1, "kind": "pass"},
+            headers=auth_header,
+        )
+
+        resp = client.get("/api/stats/overview", headers=auth_header)
+        sg_stats = resp.get_json()["studiengaenge"][0]
+        assert sg_stats["average"] == 2.0  # only the graded module counts
+        assert sg_stats["graded_credits"] == 9
+        assert sg_stats["ungraded_pass_credits"] == 3
+        assert sg_stats["total_credits"] == 12
+
 
 class TestKombiModul:
     def test_combined_grade_is_average_of_sources(self, client, auth_header):
@@ -312,6 +430,46 @@ class TestKombiModul:
             headers=auth_header,
         )
         assert resp.get_json()["final_grade"] == {"status": "failed", "value": None}
+
+    def test_ungraded_kombimodul_excluded_from_overview_average(self, client, auth_header):
+        """Regression test: /api/stats/overview used to recompute every
+        KombiModul's grade with the default graded=True, ignoring its
+        actual `graded` flag - an ungraded, passed combined module would
+        silently pull a "passed" (non-numeric) entry into what should have
+        been a plain numeric average, and worse, once it had a numeric
+        source average of its own it would count as graded credits."""
+        mathe = create_studiengang(client, auth_header, "Mathematik").get_json()
+        physik = create_studiengang(client, auth_header, "Physik").get_json()
+        analysis = create_modul(client, auth_header, [mathe["id"]], "Analysis I", 9).get_json()
+        linalg = create_modul(client, auth_header, [mathe["id"]], "Lineare Algebra I", 9).get_json()
+        client.post(
+            f"/api/module/{analysis['id']}/grades",
+            json={"slot": 1, "kind": "numeric", "value": 1.7},
+            headers=auth_header,
+        )
+        client.post(
+            f"/api/module/{linalg['id']}/grades",
+            json={"slot": 1, "kind": "numeric", "value": 2.3},
+            headers=auth_header,
+        )
+        client.post(
+            "/api/kombimodule",
+            json={
+                "name": "Math for Physicists",
+                "credits": 14,
+                "studiengang_id": physik["id"],
+                "source_module_ids": [analysis["id"], linalg["id"]],
+                "graded": False,
+            },
+            headers=auth_header,
+        )
+
+        resp = client.get("/api/stats/overview", headers=auth_header)
+        overview = resp.get_json()
+        physik_stats = next(s for s in overview["studiengaenge"] if s["name"] == "Physik")
+        assert physik_stats["average"] is None  # no graded entries in this program
+        assert physik_stats["graded_credits"] == 0
+        assert physik_stats["ungraded_pass_credits"] == 14
 
 
 class TestStatsOverview:

@@ -12,7 +12,10 @@ def _bucket_stats(module: list[Modul], kombi_module: list[KombiModul]) -> dict:
         grading.WeightedEntry(credits=m.credits, grade=m.final_grade()) for m in module
     ]
     entries += [
-        grading.WeightedEntry(credits=k.credits, grade=grading.kombimodul_grade([m.final_grade() for m in k.source_module]))
+        grading.WeightedEntry(
+            credits=k.credits,
+            grade=grading.kombimodul_grade([m.final_grade() for m in k.source_module], graded=k.graded),
+        )
         for k in kombi_module
     ]
     result = grading.weighted_average(entries)

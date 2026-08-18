@@ -109,11 +109,15 @@ export const listModule = (studiengangId?: number | null) => {
   return request<Modul[]>(`/api/module${qs}`);
 };
 export const getModul = (id: number) => request<Modul>(`/api/module/${id}`);
-export const createModul = (data: { name: string; credits: number; studiengang_ids: number[] }) =>
-  request<Modul>("/api/module", { method: "POST", body: JSON.stringify(data) });
+export const createModul = (data: {
+  name: string;
+  credits: number;
+  studiengang_ids: number[];
+  graded?: boolean;
+}) => request<Modul>("/api/module", { method: "POST", body: JSON.stringify(data) });
 export const updateModul = (
   id: number,
-  data: Partial<{ name: string; credits: number; studiengang_ids: number[] }>
+  data: Partial<{ name: string; credits: number; studiengang_ids: number[]; graded: boolean }>
 ) => request<Modul>(`/api/module/${id}`, { method: "PATCH", body: JSON.stringify(data) });
 export const deleteModul = (id: number) => request<void>(`/api/module/${id}`, { method: "DELETE" });
 
@@ -127,7 +131,7 @@ export const deleteGrade = (gradeId: number) => request<Modul>(`/api/grades/${gr
 // Submission series
 export const createSeries = (
   modulId: number,
-  data: { name: string; threshold_percent?: number; total_weeks?: number }
+  data: { name: string; threshold_percent?: number; total_weeks?: number; points_per_week?: number }
 ) => request<Modul>(`/api/module/${modulId}/series`, { method: "POST", body: JSON.stringify(data) });
 export const updateSeries = (
   seriesId: number,

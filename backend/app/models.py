@@ -124,6 +124,12 @@ class Modul(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True)
     name = db.Column(db.String(200), nullable=False)
     credits = db.Column(db.Float, nullable=False)
+    # "benotet" (True, default): grade attempts may be numeric or pass/fail,
+    # numeric feeds the credit-weighted average. "unbenotet" (False): only
+    # pass/fail attempts are allowed (enforced in routes/module.py) - the
+    # module still needs Zulassung and still earns credits once passed, it
+    # just never has a numeric grade or a say in the average.
+    graded = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, default=utcnow)
 
     studiengaenge = db.relationship(
@@ -144,6 +150,7 @@ class Modul(db.Model):
             "id": self.id,
             "name": self.name,
             "credits": self.credits,
+            "graded": self.graded,
             "studiengang_ids": [s.id for s in self.studiengaenge],
             "studiengaenge": [{"id": s.id, "name": s.name} for s in self.studiengaenge],
             "grade_attempts": [g.to_dict() for g in self.grade_attempts],

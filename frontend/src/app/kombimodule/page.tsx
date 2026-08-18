@@ -12,6 +12,7 @@ import {
 import { Card } from "@/components/Card";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { GradeBadge } from "@/components/GradeBadge";
+import { NotGradedBadge } from "@/components/NotGradedBadge";
 import { formatCredits } from "@/lib/format";
 import type { KombiModul, Modul, Studiengang } from "@/lib/types";
 
@@ -176,9 +177,10 @@ export default function KombimodulePage() {
                 className="mt-0.5"
               />
               <span>
-                Graded (benotet) – averages the source modules&apos; grades. Uncheck for an
-                ungraded (unbenotet) combined module: it counts as passed once every source
-                module has passed, with no numeric grade of its own.
+                Graded – averages the source modules&apos; grades. Uncheck for a not graded
+                combined module: it counts as passed once every source module has passed, with
+                no numeric grade of its own (its credits still count towards the total, just not
+                towards the average).
               </span>
             </label>
 
@@ -203,11 +205,7 @@ export default function KombimodulePage() {
               <div>
                 <div className="font-medium text-text-primary">
                   {k.name}
-                  {!k.graded && (
-                    <span className="ml-2 rounded-full bg-text-muted/10 px-2 py-0.5 text-xs font-normal text-text-muted">
-                      unbenotet
-                    </span>
-                  )}
+                  {!k.graded && <NotGradedBadge />}
                 </div>
                 <div className="mt-0.5 text-sm text-text-muted">
                   {studiengaenge.find((s) => s.id === k.studiengang_id)?.name} ·{" "}
